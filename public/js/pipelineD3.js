@@ -89,7 +89,6 @@ function drop(event) {
         window[newMainGnum].lastGnum = gNum;
         var newPipeObj = getValues({ p: "exportPipeline", id: piID });
         $.extend(window.pipeObj, newPipeObj);
-        console.log(window.pipeObj)
         window[newMainGnum].sData = [window.pipeObj["main_pipeline_" + piID]]
         var proName = cleanProcessName(window[newMainGnum].sData[0].name);
         window[newMainGnum].lastPipeName = proName;
@@ -137,6 +136,7 @@ function createSVG() {
     processList = {}
     processListMain = {}
     ccIDList = {} //pipeline module match id list
+    nullIDList = {} //in case node info is changed after import/save on existing. use getNewNodeId function to get new id
     processListNoOutput = {}
     edges = []
     candidates = []
@@ -171,12 +171,13 @@ function startzoom() {
 $('#editorPipeHeader').keyup(function () {
     autosave();
 });
+$('#editorPipeConfig').keyup(function () {
+    autosave();
+});
 $('#editorPipeFooter').keyup(function () {
     autosave();
 });
-$('#pipelineSum').keyup(function () {
-    autosaveDetails();
-});
+
 $('#groupSelPipe').change(function () {
     autosaveDetails();
 });
@@ -270,6 +271,7 @@ function getNewNodeId(edges, nullId, MainGNum) {
             })
             if (newNode.length === 1) {
                 var newNodeId = newNode.attr("id");
+                nullIDList["p"+MainGNum+nullId]=newNodeId
                 return newNodeId;
             }
         }
@@ -482,7 +484,7 @@ function zoomed() {
 }
 
 //kind=input/output
-function drawParam(name, process_id, id, kind, sDataX, sDataY, paramid, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, pObj) {
+function drawParam(name, process_id, id, kind, sDataX, sDataY, paramid, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, showSett, pObj) {
     var MainGNum = "";
     var prefix = "";
     if (pObj != window) {
@@ -571,6 +573,9 @@ function drawParam(name, process_id, id, kind, sDataX, sDataY, paramid, pName, c
     if (dropDown) {
         $("#text" + MainGNum + "-" + pObj.gNum).attr('dropDown', dropDown)
     }
+    if (showSett != null) {
+        $("#text" + MainGNum + "-" + pObj.gNum).attr('showSett', showSett)
+    }
     if (pubWeb) {
         $("#text" + MainGNum + "-" + pObj.gNum).attr('pubWeb', pubWeb)
     }
@@ -650,6 +655,7 @@ function addProcess(processDat, xpos, ypos) {
     var defVal = null;
     var dropDown = null;
     var pubWeb = null;
+    var showSett = null;
     //var process_id = processData[index].id;
     //for input parameters:  
     if (processDat === "inputparam@inPro") {
@@ -667,7 +673,7 @@ function addProcess(processDat, xpos, ypos) {
         var init = "o"
         var pColor = "orange"
 
-        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, window)
+        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, showSett, window)
         processList[("g-" + gNum)] = name
         processListNoOutput[("g-" + gNum)] = name
         gNum = gNum + 1
@@ -687,7 +693,7 @@ function addProcess(processDat, xpos, ypos) {
         var classtoparam = classtoparam || "connect_to_output input"
         var init = "i"
         var pColor = "green"
-        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, window)
+        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, showSett, window)
 
         processList[("g-" + gNum)] = name
         gNum = gNum + 1
@@ -1864,6 +1870,7 @@ function rename() {
     renameTextClassType = d3.select("#" + this.id).attr('classType');
     renameTextDefVal = d3.select("#" + this.id).attr('defVal');
     renameTextDropDown = d3.select("#" + this.id).attr('dropDown');
+    renameTextShowSett = d3.select("#" + this.id).attr('showSett');
     renameTextPubWeb = d3.select("#" + this.id).attr('pubWeb');
     body = document.body;
     bodyW = body.offsetWidth;
@@ -1994,7 +2001,8 @@ function refreshCreatorData(pipeline_id) {
 //Revision is not required for advanced options, description
 function saveDetails() {
     var id = $("#pipeline-title").attr('pipelineid');
-    var summary = encodeURIComponent($('#pipelineSum').val());
+    var scriptSumEditor = pipelineSumEditor.getValue();
+    var summary = encodeURIComponent(scriptSumEditor);
     var group_id = $('#groupSelPipe').val();
     var perms = $('#permsPipe').val();
     var pin = $('#pin').is(":checked").toString();
@@ -2121,6 +2129,7 @@ function createSaveNodes() {
         // save defVal, dropDown, pubWeb parameters if exist
         var defVal = $("#text-" + gNum).attr("defVal");
         var dropDown = $("#text-" + gNum).attr("dropDown");
+        var showSett = $("#text-" + gNum).attr("showSett");
         var pubWeb = $("#text-" + gNum).attr("pubWeb");
         var processModule = {};
         if (defVal) {
@@ -2128,6 +2137,9 @@ function createSaveNodes() {
         }
         if (dropDown) {
             processModule["dropDown"] = dropDown;
+        }
+        if (showSett != undefined) {
+            processModule["showSett"] = showSett;
         }
         if (pubWeb) {
             processModule["pubWeb"] = pubWeb;
@@ -2160,7 +2172,8 @@ function save() {
     var svgH = $("#container").height();
     sName = document.getElementById("pipeline-title").value;
     warnUserRedBorder('#pipeline-title', sName)
-    var pipelineSummary = encodeURIComponent($('#pipelineSum').val());
+    var scriptSumEditor = pipelineSumEditor.getValue();
+    var pipelineSummary = encodeURIComponent(scriptSumEditor);
     var group_id = $('#groupSelPipe').val();
     var perms = $('#permsPipe').val();
     var pin = $('#pin').is(":checked").toString();
@@ -2170,6 +2183,7 @@ function save() {
     var script_mode_footer = $('#script_mode_pipe_footer').val();
     var script_pipe_header = getScriptEditor('editorPipeHeader');
     var script_pipe_footer = getScriptEditor('editorPipeFooter');
+    var script_pipe_config = getScriptEditor('editorPipeConfig');
     pipeline_group_id = $('#pipeGroupAll').val();
     var pipeGroupWarn = false;
     if (!pipeline_group_id || pipeline_group_id == "") {
@@ -2214,6 +2228,8 @@ function save() {
         "script_mode_header": script_mode_header
 	      }, {
         "script_mode_footer": script_mode_footer
+	      }, {
+        "script_pipe_config": script_pipe_config
 	      }, {
         "pipeline_group_id": pipeline_group_id
 	      }, {
@@ -2394,6 +2410,7 @@ function loadPipeline(sDataX, sDataY, sDatapId, sDataName, processModules, gN, p
     var process_id = id;
     var defVal = null;
     var dropDown = null;
+    var showSett = null;
     var pubWeb = null;
     if (processModules != null && processModules != {} && processModules != "") {
         if (processModules.defVal) {
@@ -2401,6 +2418,9 @@ function loadPipeline(sDataX, sDataY, sDatapId, sDataName, processModules, gN, p
         }
         if (processModules.dropDown) {
             dropDown = processModules.dropDown;
+        }
+        if (processModules.showSett != undefined) {
+            showSett = processModules.showSett;
         }
         if (processModules.pubWeb) {
             pubWeb = processModules.pubWeb;
@@ -2437,7 +2457,7 @@ function loadPipeline(sDataX, sDataY, sDatapId, sDataName, processModules, gN, p
                 break
             }
         }
-        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, pObj)
+        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, showSett, pObj)
         pObj.processList[("g" + MainGNum + "-" + pObj.gNum)] = name
         pObj.processListNoOutput[("g" + MainGNum + "-" + pObj.gNum)] = name
         pObj.gNum = pObj.gNum + 1
@@ -2471,7 +2491,7 @@ function loadPipeline(sDataX, sDataY, sDatapId, sDataName, processModules, gN, p
                 break
             }
         }
-        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, pObj)
+        drawParam(name, process_id, id, kind, sDataX, sDataY, paramId, pName, classtoparam, init, pColor, defVal, dropDown, pubWeb, showSett, pObj)
         pObj.processList[("g" + MainGNum + "-" + pObj.gNum)] = name
         pObj.gNum = pObj.gNum + 1
 
