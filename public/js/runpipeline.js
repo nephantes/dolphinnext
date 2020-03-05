@@ -1,3 +1,102 @@
+$runscope = {
+    //-------- Store data:
+    checkUserWritePermRun : null,
+
+    //-------- Functions:
+    //Generic function to save ajax data
+    getAjaxData : function(varName, getValuesObj){
+        if ($runscope[varName] === null){
+            $runscope[varName] = getValues(getValuesObj);
+            Object.defineProperty($runscope, varName, {configureable: false, writable:false});
+        }
+        return $runscope[varName];
+    },
+    //get work OR publish dir OR runcmd
+    getPubVal : function(type){
+        var project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
+        var perms = $("#chooseEnv").find(":selected").attr('perms');
+        var publish_dir_check = $('#publish_dir_check').is(":checked").toString();
+        var dir = "";
+        if (type == "work"){
+            dir = $.trim($("#rOut_dir").val());
+        } else if (type == "publish"){
+            dir = $.trim($("#publish_dir").val());
+        } else if (type == "runcmd"){
+            dir = $.trim($("#runCmd").val());
+        } else if (type == "report"){
+            if (publish_dir_check === "true" && $.trim($("#publish_dir").val())) {
+                dir = $.trim($("#publish_dir").val())+"/report"+project_pipeline_id;
+            } else {
+                dir = $.trim($("#rOut_dir").val())+"/report"+project_pipeline_id;
+            }
+        }
+        if (perms){
+            if (perms == "15"){
+                if (type == "work" || type == "report"){
+                    var auto_workdir = $("#chooseEnv").find(":selected").attr('auto_workdir');
+                    dir = auto_workdir+"/id"+project_pipeline_id;
+                    if (type == "report"){
+                        dir = dir+"/report"+project_pipeline_id;
+                    }
+                } else if (type == "publish" || type == "runcmd"){
+                    dir = "";
+                }
+            }
+        }
+        return dir;
+    },
+    getUploadDir : function(type){
+        //type:new or type:exist
+        var perms = $("#chooseEnv").find(":selected").attr('perms');
+        var uploadDir = "";
+        var workDir = $runscope.getPubVal("work");
+        var project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
+        if (type == "new"){
+            if (workDir && project_pipeline_id){
+                uploadDir = workDir+"/run"+project_pipeline_id+"/upload";
+            }
+        } else if (type == "exist"){
+            uploadDir = $.trim($("#target_dir").val());
+        }
+        if (perms){
+            if (perms == "15"){
+                uploadDir = workDir+"/run"+project_pipeline_id+"/upload"; 
+            }
+        }
+        return uploadDir;
+    },
+    checkUserWritePerm: function(){
+        var project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
+        // if user owns the permission to write, then return 1 else 0; 
+        var writePerm = $runscope.getAjaxData("checkUserWritePermRun", {p:"checkUserWritePermRun", "project_pipeline_id":project_pipeline_id});
+        return writePerm;
+    }
+}
+
+//prevent functions overwrite
+Object.defineProperty($runscope, "getPubVal", {configureable: false, writable:false});
+Object.defineProperty($runscope, "getUploadDir", {configureable: false, writable:false});
+Object.defineProperty($runscope, "checkUserWritePerm", {configureable: false, writable:false});
+
+// [name] is the name of the event "click", "mouseover", .. 
+// same as you'd pass it to bind()
+// [fn] is the handler function
+$.fn.bindFirst = function(name, fn) {
+    // bind as you normally would
+    // don't want to miss out on any jQuery magic
+    this.on(name, fn);
+
+    // Thanks to a comment by @Martin, adding support for
+    // namespaced events too.
+    this.each(function() {
+        var handlers = $._data(this, 'events')[name.split('.')[0]];
+        // take out the handler we just inserted from the end
+        var handler = handlers.pop();
+        // move it at the beginning
+        handlers.splice(0, 0, handler);
+    });
+};
+
 /**
  * Extend the Array object
  * @param candid The string to search for
@@ -10,6 +109,50 @@ Array.prototype.searchFor = function (candid) {
     return false;
 };
 
+
+///fixCollapseMenu checkboxes
+fixCollapseMenu('#allProcessDiv', '#exec_all');
+fixCollapseMenu('#eachProcessDiv', '#exec_each');
+fixCollapseMenu('#publishDirDiv', '#publish_dir_check');
+//not allow to check both docker and singularity
+$('#docker_imgDiv').on('show.bs.collapse', function () {
+    if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
+        $('#singu_check').trigger("click");
+    }
+    $('#docker_check').attr('onclick', "return false;");
+});
+$('#singu_imgDiv').on('show.bs.collapse', function () {
+    if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
+        $('#docker_check').trigger("click");
+    }
+    $('#singu_check').attr('onclick', "return false;");
+});
+$('#docker_imgDiv').on('shown.bs.collapse', function () {
+    if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
+        $('#singu_check').trigger("click");
+    }
+    $('#docker_check').removeAttr('onclick');
+});
+$('#singu_imgDiv').on('shown.bs.collapse', function () {
+    if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
+        $('#docker_check').trigger("click");
+    }
+    $('#singu_check').removeAttr('onclick');
+});
+$('#singu_imgDiv').on('hide.bs.collapse', function () {
+    $('#singu_check').attr('onclick', "return false;");
+});
+$('#docker_imgDiv').on('hide.bs.collapse', function () {
+    $('#docker_check').attr('onclick', "return false;");
+});
+$('#docker_imgDiv').on('hidden.bs.collapse', function () {
+    $('#docker_check').removeAttr('onclick');
+});
+$('#singu_imgDiv').on('hidden.bs.collapse', function () {
+    $('#singu_check').removeAttr('onclick');
+});
+
+
 function createPiGnumList() {
     //get available pipeline Module list
     piGnumList = [];
@@ -19,6 +162,8 @@ function createPiGnumList() {
         }
     });
 }
+
+
 
 //adjust container size based on window size
 window.onresize = function (event) {
@@ -116,63 +261,8 @@ var timeoutId = 0;
 
 
 
-function resetSingleParam(paramId) {
-    if ($('#' + paramId).attr("connect") === "single") {
-        if ($('#' + paramId).parent().attr("class") === "g-inPro") {
-            resetOriginal("inPro", paramId)
-        } else if ($('#' + paramId).parent().attr("class") === "g-outPro") {
-            resetOriginal("outPro", paramId)
-            return true
-        }
-    }
-    return false
-}
 
-//resets input/output parameters to original state
-//paramType:outPro or inPro
-function resetOriginal(paramType, firstParamId) {
-    var patt = /(.*)-(.*)-(.*)-(.*)-(.*)/;
-    if (paramType === 'outPro') {
-        var originalID = firstParamId.replace(patt, '$1-$2-$3-' + "outPara" + '-$5')
-        d3.selectAll("#" + firstParamId).attr("id", originalID);
-        d3.selectAll("#" + originalID).attr("class", "connect_to_output input");
-    } else if (paramType === 'inPro') {
-        var originalID = firstParamId.replace(patt, '$1-$2-$3-' + "inPara" + '-$5')
-        d3.selectAll("#" + firstParamId).attr("id", originalID);
-        d3.selectAll("#" + originalID).attr("class", "connect_to_input output");
-    }
-}
 
-//edges-> all edge list, nullId-> process input/output id that not exist in the d3 diagrams 
-function getNewNodeId(edges, nullId, MainGNum) {
-    //nullId: i-24-14-20-1
-    var nullProcessInOut = nullId.split("-")[0];
-    var nullProcessId = nullId.split("-")[1];
-    var nullProcessParId = nullId.split("-")[3];
-    var nullProcessGnum = nullId.split("-")[4];
-    //check is parameter is unique:
-    if (nullProcessInOut === "i") {
-        var nodes = JSON.parse(window.pipeObj["pro_para_inputs_" + nullProcessId]);
-    } else if (nullProcessInOut === "o") {
-        var nodes = JSON.parse(window.pipeObj["pro_para_outputs_" + nullProcessId]);
-    }
-    if (nodes) {
-        var paraData = nodes.filter(function (el) { return el.parameter_id == nullProcessParId });
-        //get newNodeID  
-        if (paraData.length === 1 && nullProcessId !== "inPro" && nullProcessId !== "outPro") {
-            var patt = /(.*)-(.*)-(.*)-(.*)-(.*)/;
-            var nullIdRegEx = new RegExp(nullId.replace(patt, '$1-$2-' + '(.*)' + '-$4-$5'), 'g')
-            var newNode = $('#g' + MainGNum + "-" + nullProcessGnum).find("circle").filter(function () {
-                return this.id.match(nullIdRegEx);
-            })
-            if (newNode.length === 1) {
-                var newNodeId = newNode.attr("id");
-                nullIDList["p"+MainGNum+nullId]=newNodeId
-                return newNodeId;
-            }
-        }
-    }
-}
 
 function translateSVG(mG, pObj) {
     var MainGNum = "";
@@ -246,58 +336,42 @@ function openSubPipeline(piID, pObj) {
 
     if (sData) {
         pObj.nodes = sData.nodes
-        pObj.nodes = JSON.parse(pObj.nodes.replace(/'/gi, "\""))
-        pObj.mG = sData.mainG
-        pObj.mG = JSON.parse(pObj.mG.replace(/'/gi, "\""))["mainG"]
-        translateSVG(pObj.mG, pObj)
-        for (var key in pObj.nodes) {
-            pObj.x = pObj.nodes[key][0]
-            pObj.y = pObj.nodes[key][1]
-            pObj.pId = pObj.nodes[key][2]
-            pObj.name = cleanProcessName(pObj.nodes[key][3]);
-            var processModules = pObj.nodes[key][4];
-            pObj.gNum = key.split("-")[1]
-            if (pObj.pId.match(/p(.*)/)) {
-                var newPiID = pObj.pId.match(/p(.*)/)[1];
-                var newMainGnum = "pObj" + MainGNum + "_" + pObj.gNum;
-                window[newMainGnum] = {};
-                window[newMainGnum].piID = newPiID;
-                window[newMainGnum].MainGNum = MainGNum + "_" + pObj.gNum;
-                window[newMainGnum].lastGnum = pObj.gNum;
-                window[newMainGnum].sData = [window.pipeObj["pipeline_module_" + newPiID]]
-                window[newMainGnum].lastPipeName = pObj.name;
-                // create new SVG workplace inside panel, if not added before
-                openSubPipeline(newPiID, window[newMainGnum]);
-                // add pipeline circle to main workplace
-                addPipeline(newPiID, pObj.x, pObj.y, pObj.name, pObj, window[newMainGnum]);
-            } else {
-                loadPipeline(pObj.x, pObj.y, pObj.pId, pObj.name, processModules, pObj.gNum, pObj)
-            }
-        }
-        pObj.ed = sData.edges.slice();
-        pObj.ed = JSON.parse(pObj.ed.replace(/'/gi, "\""))["edges"]
-        for (var ee = 0; ee < pObj.ed.length; ee++) {
-            pObj.eds = pObj.ed[ee].split("_")
-            //specific to module panel
-            //if process is updated through process modal, reconnect the uneffected one based on their parameter_id.
-            if (!document.getElementById(prefix + pObj.eds[0]) && document.getElementById(prefix + pObj.eds[1])) {
-                var newID = getNewNodeId(pObj.ed, pObj.eds[0], MainGNum)
-                if (newID) {
-                    newID = newID.replace(prefix, "")
-                    pObj.eds[0] = newID;
+        if (pObj.nodes) {
+            if (IsJsonString(pObj.nodes.replace(/'/gi, "\""))) {
+                pObj.nodes = JSON.parse(pObj.nodes.replace(/'/gi, "\""))
+                pObj.mG = sData.mainG
+                pObj.mG = JSON.parse(pObj.mG.replace(/'/gi, "\""))["mainG"]
+                translateSVG(pObj.mG, pObj)
+                for (var key in pObj.nodes) {
+                    pObj.x = pObj.nodes[key][0]
+                    pObj.y = pObj.nodes[key][1]
+                    pObj.pId = pObj.nodes[key][2]
+                    pObj.name = cleanProcessName(pObj.nodes[key][3]);
+                    var processModules = pObj.nodes[key][4];
+                    pObj.gNum = key.split("-")[1]
+                    if (pObj.pId.match(/p(.*)/)) {
+                        var newPiID = pObj.pId.match(/p(.*)/)[1];
+                        var newMainGnum = "pObj" + MainGNum + "_" + pObj.gNum;
+                        window[newMainGnum] = {};
+                        window[newMainGnum].piID = newPiID;
+                        window[newMainGnum].MainGNum = MainGNum + "_" + pObj.gNum;
+                        window[newMainGnum].lastGnum = pObj.gNum;
+                        window[newMainGnum].sData = [window.pipeObj["pipeline_module_" + newPiID]]
+                        window[newMainGnum].lastPipeName = pObj.name;
+                        // create new SVG workplace inside panel, if not added before
+                        openSubPipeline(newPiID, window[newMainGnum]);
+                        // add pipeline circle to main workplace
+                        addPipeline(newPiID, pObj.x, pObj.y, pObj.name, pObj, window[newMainGnum]);
+                    } else {
+                        loadPipeline(pObj.x, pObj.y, pObj.pId, pObj.name, processModules, pObj.gNum, pObj)
+                    }
+                }
+                pObj.ed = sData.edges.slice();
+                pObj.ed = JSON.parse(pObj.ed.replace(/'/gi, "\""))["edges"]
+                for (var ee = 0; ee < pObj.ed.length; ee++) {
+                    pObj.eds = pObj.ed[ee].split("_")
                     createEdges(pObj.eds[0], pObj.eds[1], pObj)
                 }
-                //if process is updated through process modal, reset the edge of input/output parameter and reset the single circles.
-            } else if (!document.getElementById(prefix + pObj.eds[1]) && document.getElementById(prefix + pObj.eds[0])) {
-                var newID = getNewNodeId(pObj.ed, pObj.eds[1], MainGNum);
-                if (newID) {
-                    newID = newID.replace(prefix, "")
-                    pObj.eds[1] = newID;
-                    createEdges(pObj.eds[0], pObj.eds[1], pObj)
-                }
-            } else if (document.getElementById(prefix + pObj.eds[1]) && document.getElementById(prefix + pObj.eds[0])) {
-                addCandidates2DictForLoad(pObj.eds[0], pObj)
-                createEdges(pObj.eds[0], pObj.eds[1], pObj)
             }
         }
     }
@@ -343,30 +417,7 @@ function openPipeline(id) {
             ed = JSON.parse(ed.replace(/'/gi, "\""))["edges"]
             for (var ee = 0; ee < ed.length; ee++) {
                 eds = ed[ee].split("_")
-                if (!document.getElementById(eds[0]) && document.getElementById(eds[1])) {
-                    //if process is updated through process modal, reconnect the uneffected one based on their parameter_id.
-                    var newID = getNewNodeId(ed, eds[0], "")
-                    if (newID) {
-                        eds[0] = newID;
-                        addCandidates2DictForLoad(eds[0], window)
-                        createEdges(eds[0], eds[1], window)
-                    }
-                    //if process is updated through process modal, reset the edge of input/output parameter and reset the single circles.
-                    resetSingleParam(eds[1]);
-
-                } else if (!document.getElementById(eds[1]) && document.getElementById(eds[0])) {
-                    var newID = getNewNodeId(ed, eds[1], "");
-                    if (newID) {
-                        eds[1] = newID;
-                        addCandidates2DictForLoad(eds[0], window)
-                        createEdges(eds[0], eds[1], window)
-                    }
-                    resetSingleParam(eds[0]);
-
-                } else if (document.getElementById(eds[1]) && document.getElementById(eds[0])) {
-                    addCandidates2DictForLoad(eds[0], window)
-                    createEdges(eds[0], eds[1], window)
-                }
+                createEdges(eds[0], eds[1], window)
             }
         }
     }
@@ -1447,9 +1498,26 @@ function autofillEmptyInputs(autoFillJSON) {
     })
 }
 
+
+function getDefaultImage(states){
+    var $DEFAULT_IMAGE = "";
+    $.each(states, function (st) {
+        var defName = states[st] ; // expected Value
+        if (st.match(/\$(.*)/)) {
+            var varName = st.match(/\$(.*)/)[1]; //variable Name
+            if (varName === "DEFAULT_IMAGE") {
+                $DEFAULT_IMAGE = defName;
+            }
+        }
+    });
+    return $DEFAULT_IMAGE;
+}
+
+
 //change propipeinputs in case all conds are true
 function fillStates(states, url, urlzip, checkPath) {
     $("#inputsTab").loading('start');
+    var $DEFAULT_IMAGE = getDefaultImage(states);
     $.each(states, function (st) {
         var defName = states[st] ; // expected Value
         var defUrl = url[st] || null;; // expected Value
@@ -1466,21 +1534,28 @@ function fillStates(states, url, urlzip, checkPath) {
                     autoFillButton(varNameButAr[0], defName, keepExist, defUrl, defUrlzip, defcheckPath);
                 }
             }
-            //if variable starts with "$" then run parameters for pipeline are defined. Fill run parameters. $SINGULARITY_IMAGE, $SINGULARITY_OPTIONS, $DOCKER_IMAGE, $DOCKER_OPTIONS, $MEMORY, $TIME, $QUEUE, $CPU, $EXEC_OPTIONS 
+            //if variable starts with "$" then run parameters for pipeline are defined. Fill run parameters. $SINGULARITY_IMAGE, $SINGULARITY_OPTIONS, $DOCKER_IMAGE, $DOCKER_OPTIONS, $MEMORY, $TIME, $QUEUE, $CPU, $EXEC_OPTIONS $DEFAULT_IMAGE
         } else if (st.match(/\$(.*)/)) {
+            var cloudType = $("#chooseEnv").find(":selected").val();
+            var patt = /(.*)-(.*)/;
+            var proType = cloudType.replace(patt, '$1');
             var varName = st.match(/\$(.*)/)[1]; //variable Name
+            // if $DEFAULT_IMAGE is defined then it must be validated before updateCheckBox
+            // if google cloud is selected then it must be DOCKER_IMAGE -> $DEFAULT_IMAGE will be overwritten
             if (varName === "SINGULARITY_IMAGE") {
                 $('#singu_img').val(defName);
-                updateCheckBox('#singu_check', "true");
+                if (proType != "google" && (!$DEFAULT_IMAGE || $DEFAULT_IMAGE == "singularity")){
+                    updateCheckBox('#singu_check', "true");
+                }
             } else if (varName === "DOCKER_IMAGE") {
                 $('#docker_img').val(defName);
-                updateCheckBox('#docker_check', "true");
+                if (proType == "google" || !$DEFAULT_IMAGE || $DEFAULT_IMAGE == "docker"){
+                    updateCheckBox('#docker_check', "true");
+                }
             } else if (varName === "SINGULARITY_OPTIONS") {
                 $('#singu_opt').val(defName);
-                updateCheckBox('#singu_check', "true");
             } else if (varName === "DOCKER_OPTIONS") {
                 $('#docker_opt').val(defName);
-                updateCheckBox('#docker_check', "true");
             } else if (varName === "TIME") {
                 fillExecSettings("#job_time", defName, "pipeline");
             } else if (varName === "QUEUE") {
@@ -1494,7 +1569,7 @@ function fillStates(states, url, urlzip, checkPath) {
                 //two conditions covers both process and pipeline run_commands
             } else if (varName.match(/RUN_COMMAND@(.*)/) || varName === "RUN_COMMAND") {
                 setTimeout(function () {
-                    var initialText = $('#runCmd').val();
+                    var initialText = $runscope.getPubVal("runcmd");
                     if (initialText == "") {
                         $('#runCmd').val(defName);
                     } else {
@@ -1527,12 +1602,92 @@ function fillStates(states, url, urlzip, checkPath) {
         }
     });
 }
-// to execute autofill function, binds event handlers
-function bindEveHandler(autoFillJSON) {
+
+function getJobData(getType) {
+    var chooseEnv = $('#chooseEnv option:selected').val();
+    if (chooseEnv) {
+        var patt = /(.*)-(.*)/;
+        var proType = chooseEnv.replace(patt, '$1');
+        var proId = chooseEnv.replace(patt, '$2');
+        var profileData = getProfileData(proType, proId);
+        var allProSett = {};
+        if (profileData) {
+            allProSett.job_queue = profileData[0].job_queue;
+            allProSett.job_memory = profileData[0].job_memory;
+            allProSett.job_cpu = profileData[0].job_cpu;
+            allProSett.job_time = profileData[0].job_time;
+            allProSett.job_clu_opt = profileData[0].job_clu_opt;
+            if (getType === "job") {
+                return profileData;
+            } else if (getType === "both") {
+                return [allProSett, profileData];
+            }
+        } else {
+            return [allProSett, profileData];
+        }
+    }
+}
+
+// to execute autofill function, binds event handlers to chooseEnv
+function bindEveHandlerChooseEnv(autoFillJSON, jsonType) {
+    if (jsonType == "pipeline"){
+        $("#chooseEnv").bindFirst("change", function(){
+            var [allProSett, profileData] = getJobData("both");
+            // autofill def_publishdir and def_workdir
+            var def_publishdir = "";
+            var def_workdir = "";
+            var project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
+            if (profileData) {
+                if (profileData[0]) {
+                    if (profileData[0].def_publishdir){
+                        def_publishdir = profileData[0].def_publishdir + "/work"+project_pipeline_id ; 
+                        $("#publish_dir").val(def_publishdir);
+                        updateCheckBox('#publish_dir_check', "true");
+                    }
+                    if (profileData[0].def_workdir){
+                        def_workdir = profileData[0].def_workdir + "/work"+project_pipeline_id;
+                        $("#rOut_dir").val(def_workdir)
+                    }
+                }
+            }
+
+            $("input.execcheckbox").each(function(){
+                $(this).prop('checked', false);
+            })
+            if (allProSett.job_cpu != null){
+                $(".form-control.execcpu").each(function(){
+                    $(this).val(allProSett.job_cpu);
+                })
+            }
+            if (allProSett.job_memory != null){
+                $(".form-control.execmemory").each(function(){
+                    $(this).val(allProSett.job_memory);
+                })
+            }
+            if (allProSett.job_queue != null){
+                $(".form-control.execqueue").each(function(){
+                    $(this).val(allProSett.job_queue);
+                })
+            }
+            if (allProSett.job_time != null){
+                $(".form-control.exectime").each(function(){
+                    $(this).val(allProSett.job_time);
+                })
+            }
+            if (allProSett.job_clu_opt != null){
+                $(".form-control.execopt").each(function(){
+                    $(this).val(allProSett.job_clu_opt);
+                })
+            }
+
+
+
+        });
+    }
     $("#chooseEnv").change(autoFillJSON, function () {
-        var triggeredFillStates = false;
-        var fillHostFunc = function(autoFillJSON, type) {
-            var triggeredFillStates = false;
+        console.log(autoFillJSON)
+        var fillHostFunc = function(autoFillJSON, type, filledVars) {
+            console.log(jsonType)
             $.each(autoFillJSON, function (el) {
                 var conds = autoFillJSON[el].condition;
                 var states = autoFillJSON[el].statement;
@@ -1544,23 +1699,58 @@ function bindEveHandler(autoFillJSON) {
                     if (conds.$HOSTNAME) {   
                         var statusCond = checkConds(conds, type);
                         if (statusCond === true) {
-                            fillStates(states, url, urlzip, checkPath)
-                            triggeredFillStates = true;
+                            if (type == "default"){
+                                var not_filled_states = $.extend(true, {}, states);
+                                var not_filled_url = $.extend(true, {}, url);
+                                var not_filled_urlzip = $.extend(true, {}, urlzip);
+                                var not_filled_checkPath = $.extend(true, {}, checkPath);
+                                $.each(filledVars, function (filled_el) {
+                                    if (filled_el in not_filled_states){
+                                        delete not_filled_states[filled_el]; 
+                                    }
+                                    if (filled_el in not_filled_url){
+                                        delete not_filled_url[filled_el]; 
+                                    }
+                                    if (filled_el in not_filled_urlzip){
+                                        delete not_filled_urlzip[filled_el]; 
+                                    }
+                                    if (filled_el in not_filled_checkPath){
+                                        delete not_filled_checkPath[filled_el]; 
+                                    }
+                                    // if one of the following parameter is filled than don't use container info coming from default condition 
+                                    if (filled_el == "$SINGULARITY_IMAGE" || filled_el == "$DOCKER_IMAGE" || filled_el == "$SINGULARITY_OPTIONS" || filled_el == "$DOCKER_OPTIONS"){
+                                        delete not_filled_states["$SINGULARITY_IMAGE"]; 
+                                        delete not_filled_states["$SINGULARITY_OPTIONS"]; 
+                                        delete not_filled_states["$DOCKER_IMAGE"]; 
+                                        delete not_filled_states["$DOCKER_OPTIONS"]; 
+                                    }
+                                });
+                                console.log(states)
+                                console.log(not_filled_states)
+                                fillStates(not_filled_states, not_filled_url, not_filled_urlzip, not_filled_checkPath)
+                            } else {
+                                fillStates(states, url, urlzip, checkPath)
+                                $.extend(filledVars, states); // Merge states into filledVars
+                            }
                             autoCheck("fillstates")
                         }
                     }
                 };
             }); 
-            return triggeredFillStates
+            return filledVars
         }
-        triggeredFillStates = fillHostFunc(autoFillJSON)
-        // fill $HOSTNAME ="default" states if not triggered before
-        if (!triggeredFillStates){
-            fillHostFunc(autoFillJSON, "default")
-        }
+        //## position where fillwithDefaults() finalized
+        var filledVars = fillHostFunc(autoFillJSON, "", {})
+        // fill $HOSTNAME ="default" states if not filled before(based on filledVars obj)
+        fillHostFunc(autoFillJSON, "default", filledVars)
     });
 
+}
 
+// to execute autofill function, binds event handlers to buttons other than chooseEnv
+function bindEveHandler(autoFillJSON) {
+    //find buttons that should trigger autofill
+    var bindButtonArray = [];
     $.each(autoFillJSON, function (el) {
         var conds = autoFillJSON[el].condition;
         var states = autoFillJSON[el].statement;
@@ -1568,28 +1758,19 @@ function bindEveHandler(autoFillJSON) {
         var urlzip = autoFillJSON[el].urlzip;
         var checkPath = autoFillJSON[el].checkPath;
         if (conds && states && !$.isEmptyObject(conds) && !$.isEmptyObject(states)) {
-            //if condition exist other than $HOSTNAME then bind eventhandler to #params. button (eg. dropdown or inputValEnter)
+            //if condition exists other than $HOSTNAME then bind eventhandler to #params. button (eg. dropdown or inputValEnter)
             $.each(conds, function (el) {
                 if (el !== "$HOSTNAME") {
-                    //if variable start with "params." then check #inputsTab
+                    //if variable starts with "params." then check #inputsTab
                     if (el.match(/params\.(.*)/)) {
                         var varName = el.match(/params\.(.*)/)[1]; //variable Name
                         var checkVarName = $("#inputsTab").find("td[given_name='" + varName + "']")[0];
                         if (checkVarName) {
                             var varNameButAr = $(checkVarName).children();
                             if (varNameButAr && varNameButAr[0]) {
-                                //bind eventhandler to indropdown button
-                                $(varNameButAr[0]).change(function () {
-                                    var statusCond = checkConds(conds);
-                                    var statusCondDefault = checkConds(conds, "default");
-                                    if (statusCond === true) {
-                                        fillStates(states, url, urlzip, checkPath);
-                                        autoCheck("fillstates")
-                                    } else if (statusCondDefault === true){
-                                        fillStates(states, url, urlzip, checkPath);
-                                        autoCheck("fillstates")
-                                    }
-                                });
+                                if (bindButtonArray.indexOf(varNameButAr[0]) === -1){
+                                    bindButtonArray.push(varNameButAr[0])
+                                }
                             }
                         }
                     }
@@ -1597,6 +1778,58 @@ function bindEveHandler(autoFillJSON) {
             });
         }
     });
+
+    //bind eventhandler to dropdown button
+    for (var i = 0; i < bindButtonArray.length; i++) {
+        var bindButton = bindButtonArray[i];
+        var doCall = function (bindButton) {
+            $(bindButton).change(function () {
+                var triggeredFillStates = false;
+                var fillHostFunc = function(autoFillJSON, type) {
+                    var triggeredFillStates = false;
+                    $.each(autoFillJSON, function (el) {
+                        var conds = autoFillJSON[el].condition;
+                        var states = autoFillJSON[el].statement;
+                        var url = autoFillJSON[el].url;
+                        var urlzip = autoFillJSON[el].urlzip;
+                        var checkPath = autoFillJSON[el].checkPath;
+                        if (conds && states && !$.isEmptyObject(conds) && !$.isEmptyObject(states)) {
+                            //if condition exists other than $HOSTNAME then bind eventhandler to #params. button (eg. dropdown or inputValEnter)
+                            $.each(conds, function (el) {
+                                if (el !== "$HOSTNAME") {
+                                    //if variable starts with "params." then check #inputsTab
+                                    if (el.match(/params\.(.*)/)) {
+                                        var varName = el.match(/params\.(.*)/)[1]; //variable Name
+                                        var checkVarName = $("#inputsTab").find("td[given_name='" + varName + "']")[0];
+                                        if (checkVarName) {
+                                            var varNameButAr = $(checkVarName).children();
+                                            if (varNameButAr && varNameButAr[0]) {
+                                                if (varNameButAr[0] == bindButton){
+                                                    var statusCond = checkConds(conds, type);
+                                                    if (statusCond === true) {
+                                                        fillStates(states, url, urlzip, checkPath)
+                                                        triggeredFillStates = true;
+                                                        autoCheck("fillstates")
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        };
+                    }); 
+                    return triggeredFillStates
+                }
+                triggeredFillStates = fillHostFunc(autoFillJSON)
+                // fill $HOSTNAME ="default" states if not triggered before
+                if (!triggeredFillStates){
+                    fillHostFunc(autoFillJSON, "default")
+                }
+            });
+        }
+        doCall(bindButton);
+    }
 }
 
 var addProfileLib = function (oldLibObj, profileVariables){
@@ -1613,6 +1846,7 @@ var addProfileLib = function (oldLibObj, profileVariables){
 
 function addProfileVar(autoFillJSON) {
     var profileVar = getValues({ "p": "getProfileVariables" });
+    var defaultLib = {}
     if (autoFillJSON) {
         for (var i = 0; i < profileVar.length; i++) {
             var confirmUpdate = false;
@@ -1624,8 +1858,11 @@ function addProfileVar(autoFillJSON) {
                     if (autoFillJSON[el].condition && autoFillJSON[el].condition != null && !$.isEmptyObject(autoFillJSON[el].condition)) {
                         if (autoFillJSON[el].condition.$HOSTNAME){
                             if (autoFillJSON[el].condition.$HOSTNAME == proHost){
-                                addProfileLib (autoFillJSON[el].library,proVar);
+                                addProfileLib(autoFillJSON[el].library,proVar);
                                 confirmUpdate = true;
+                            } 
+                            else if (autoFillJSON[el].condition.$HOSTNAME == "default"){
+                                defaultLib = $.extend(true, {}, autoFillJSON[el].library);
                             }
                         }
                     }
@@ -1633,10 +1870,10 @@ function addProfileVar(autoFillJSON) {
             });
             //insert as a new row if not exist in the exising obj
             if (!confirmUpdate){
-                var newCond = { condition: {}, genCondition: {}, statement: {}, library: {}, url:{}, urlzip:{}, checkPath:{} };
+                var newCond = { condition: {}, genCondition: {}, statement: {}, library: defaultLib, url:{}, urlzip:{}, checkPath:{} };
                 newCond.condition.$HOSTNAME = proHost;
                 addProfileLib(newCond.library,proVar);
-                autoFillJSON.push(newCond);
+                autoFillJSON.push(newCond); 
             }
         }
     }
@@ -1833,7 +2070,6 @@ function getNewStatements(conditions, autoFillJSON, genStatement, url, urlzip, c
         for (var i = 0; i < sectionAr.length; i++) {
             fillWithNewValue(newStateCond, sectionAr[i], fillName[i], mergedLib);
         }
-
     }
     return newStateCond
 }
@@ -2220,7 +2456,7 @@ function getRowTable(rowType, firGnum, secGnum, paramGivenName, paraIdentifier, 
 }
 
 function insertProRowTable(process_id, gNum, procName, procQueDef, procMemDef, procCpuDef, procTimeDef, procOptDef) {
-    return '<tr procProId="' + process_id + '" id="procGnum-' + gNum + '"><td><input name="check" id="check-' + gNum + '" type="checkbox" </td><td>' + procName + '</td><td><input name="queue" class="form-control execSetting" type="text" value="' + procQueDef + '"></input></td><td><input class="form-control execSetting" type="text" name="memory" value="' + procMemDef + '"></input></td><td><input name="cpu" class="form-control execSetting" type="text" value="' + procCpuDef + '"></input></td><td><input name="time" class="form-control execSetting" type="text" value="' + procTimeDef + '"></input></td><td><input name="opt" class="form-control execSetting" type="text" value="' + procOptDef + '"></input></td></tr>'
+    return '<tr procProId="' + process_id + '" id="procGnum-' + gNum + '"><td><input name="check" class="execcheckbox" id="check-' + gNum + '" type="checkbox" </td><td>' + procName + '</td><td><input name="queue" class="form-control execSetting execqueue" type="text" value="' + procQueDef + '"></input></td><td><input class="form-control execSetting execmemory" type="text" name="memory" value="' + procMemDef + '"></input></td><td><input name="cpu" class="form-control execSetting execcpu" type="text" value="' + procCpuDef + '"></input></td><td><input name="time" class="form-control execSetting exectime" type="text" value="' + procTimeDef + '"></input></td><td><input name="opt" class="form-control execSetting execopt" type="text" value="' + procOptDef + '"></input></td></tr>'
 }
 
 
@@ -2229,7 +2465,7 @@ function insertProRowTable(process_id, gNum, procName, procQueDef, procMemDef, p
 function addProPipeTab(process_id, gNum, procName, pObj) {
     if (pObj && pObj !== window) {
         procName = pObj.lastPipeName + "_" + procName;
-    }
+    }    
     var procQueDef = 'short';
     var procMemDef = '10'
     var procCpuDef = '1';
@@ -2304,118 +2540,122 @@ function addPipeline(piID, x, y, name, pObjOrigin, pObjSub) {
         if (Object.keys(pObjSub.sData).length > 0) {
             //--Pipeline details table add process--
             pObjSub.nodesOrg = pObjSub.sData[0].nodes
-            pObjSub.nodesOrg = JSON.parse(pObjSub.nodesOrg.replace(/'/gi, "\""));
-            pObjSub.edOrg = pObjSub.sData[0].edges;
-            pObjSub.edOrg = JSON.parse(pObjSub.edOrg.replace(/'/gi, "\""))["edges"]
-            pObjSub.inNodes = {}; //input nodes that are connected to "input parameters"
-            pObjSub.outNodes = []; //output nodes that are connected to "output parameters"
-            for (var ee = 0; ee < pObjSub.edOrg.length; ee++) {
-                if (pObjSub.edOrg[ee].indexOf("inPro") > -1) {
-                    pObjSub.edsOrg = pObjSub.edOrg[ee].split("_")
-                    if (pObjSub.edsOrg[0][0] === "i") { //i-50-0-46-6_o-inPro-1-46-7
-                        if (!pObjSub.inNodes[pObjSub.edsOrg[1]]) {
-                            pObjSub.inNodes[pObjSub.edsOrg[1]] = [];
+            if (pObjSub.nodesOrg){
+                if (IsJsonString(pObjSub.nodesOrg.replace(/'/gi, "\""))){
+                    pObjSub.nodesOrg = JSON.parse(pObjSub.nodesOrg.replace(/'/gi, "\""));
+                    pObjSub.edOrg = pObjSub.sData[0].edges;
+                    pObjSub.edOrg = JSON.parse(pObjSub.edOrg.replace(/'/gi, "\""))["edges"]
+                    pObjSub.inNodes = {}; //input nodes that are connected to "input parameters"
+                    pObjSub.outNodes = []; //output nodes that are connected to "output parameters"
+                    for (var ee = 0; ee < pObjSub.edOrg.length; ee++) {
+                        if (pObjSub.edOrg[ee].indexOf("inPro") > -1) {
+                            pObjSub.edsOrg = pObjSub.edOrg[ee].split("_")
+                            if (pObjSub.edsOrg[0][0] === "i") { //i-50-0-46-6_o-inPro-1-46-7
+                                if (!pObjSub.inNodes[pObjSub.edsOrg[1]]) {
+                                    pObjSub.inNodes[pObjSub.edsOrg[1]] = [];
+                                }
+                                pObjSub.inNodes[pObjSub.edsOrg[1]].push(pObjSub.edsOrg[0]); //keep nodes in the same array if they connected to same "input parameter"
+                            } else { //o-inPro-1-46-7_i-50-0-46-6
+                                if (!pObjSub.inNodes[pObjSub.edsOrg[0]]) {
+                                    pObjSub.inNodes[pObjSub.edsOrg[0]] = []
+                                }
+                                pObjSub.inNodes[pObjSub.edsOrg[0]].push(pObjSub.edsOrg[1]);
+                            }
+                        } else if (pObjSub.edOrg[ee].indexOf("outPro") > -1) {
+                            pObjSub.edsOrg = pObjSub.edOrg[ee].split("_")
+                            if (pObjSub.edsOrg[0][0] == "o") {
+                                pObjSub.outNodes.push(pObjSub.edsOrg[0]);
+                            } else {
+                                pObjSub.outNodes.push(pObjSub.edsOrg[1]);
+                            }
                         }
-                        pObjSub.inNodes[pObjSub.edsOrg[1]].push(pObjSub.edsOrg[0]); //keep nodes in the same array if they connected to same "input parameter"
-                    } else { //o-inPro-1-46-7_i-50-0-46-6
-                        if (!pObjSub.inNodes[pObjSub.edsOrg[0]]) {
-                            pObjSub.inNodes[pObjSub.edsOrg[0]] = []
-                        }
-                        pObjSub.inNodes[pObjSub.edsOrg[0]].push(pObjSub.edsOrg[1]);
                     }
-                } else if (pObjSub.edOrg[ee].indexOf("outPro") > -1) {
-                    pObjSub.edsOrg = pObjSub.edOrg[ee].split("_")
-                    if (pObjSub.edsOrg[0][0] == "o") {
-                        pObjSub.outNodes.push(pObjSub.edsOrg[0]);
-                    } else {
-                        pObjSub.outNodes.push(pObjSub.edsOrg[1]);
+                    //I / O id naming: [0] i = input, o = output - [1] process database ID - [2] The number of I / O of the selected process - [3] Parameter database ID - [4] uniqe number
+                    var c = 0;
+                    $.each(pObjSub.inNodes, function (k) {
+                        if (pObjSub.inNodes[k].length === 1) {
+                            var proId = pObjSub.inNodes[k][0].split("-")[1];
+                            var parId = pObjSub.inNodes[k][0].split("-")[3];
+                            var ccNodeId = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][0];
+                            var ccNode = $("#" + ccNodeId);
+                            ccIDList[prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum] = ccNodeId;
+                            d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
+                                .attr("id", prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum)
+                                .attr("ccID", ccNodeId) //copyID for pipeline modules
+                                .attr("type", "I/O")
+                                .attr("kind", "input")
+                                .attr("parentG", "g" + MainGNum + "-" + pObjOrigin.gNum)
+                                .attr("name", ccNode.attr('name'))
+                                .attr("status", "standard")
+                                .attr("connect", "single")
+                                .attr("class", ccNode.attr('class'))
+                                .attr("cx", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cx", "inputsPipe"))
+                                .attr("cy", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cy", "inputsPipe"))
+                                .attr("r", ior)
+                                .attr("fill", "tomato")
+                                .attr('fill-opacity', 0.8)
+                                .on("mouseover", IOmouseOver)
+                                .on("mousemove", IOmouseMove)
+                                .on("mouseout", IOmouseOut)
+                            //                        .on("mousedown", IOconnect)
+                            c++;
+                        } else if (pObjSub.inNodes[k].length > 1) {
+                            pObjSub.ccIDAr = [];
+                            for (var i = 0; i < pObjSub.inNodes[k].length; i++) {
+                                pObjSub.ccIDAr[i] = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][i];
+                                var proId = pObjSub.inNodes[k][i].split("-")[1];
+                                var parId = pObjSub.inNodes[k][i].split("-")[3];
+                                ccIDList[prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum] = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][i];
+                            }
+                            var ccNode = $("#" + pObjSub.ccIDAr[0])
+                            d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
+                                .attr("id", prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum)
+                                .attr("ccID", pObjSub.ccIDAr) //copyID for pipeline modules
+                                .attr("type", "I/O")
+                                .attr("kind", "input")
+                                .attr("parentG", "g" + MainGNum + "-" + pObjOrigin.gNum)
+                                .attr("name", ccNode.attr('name'))
+                                .attr("status", "standard")
+                                .attr("connect", "single")
+                                .attr("class", ccNode.attr('class'))
+                                .attr("cx", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cx", "inputsPipe"))
+                                .attr("cy", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cy", "inputsPipe"))
+                                .attr("r", ior)
+                                .attr("fill", "tomato")
+                                .attr('fill-opacity', 0.8)
+                                .on("mouseover", IOmouseOver)
+                                .on("mousemove", IOmouseMove)
+                                .on("mouseout", IOmouseOut)
+                            //                        .on("mousedown", IOconnect)
+                            c++;
+                        }
+                    })
+                    for (var k = 0; k < pObjSub.outNodes.length; k++) {
+                        var proId = pObjSub.outNodes[k].split("-")[1];
+                        var parId = pObjSub.outNodes[k].split("-")[3];
+                        var ccNodeID = "p" + pObjSub.MainGNum + pObjSub.outNodes[k];
+                        var ccNode = $("#" + ccNodeID)
+                        ccIDList[prefix + "o-" + proId + "-" + k + "-" + parId + "-" + pObjOrigin.gNum] = ccNodeID;
+                        d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
+                            .attr("id", prefix + "o-" + proId + "-" + k + "-" + parId + "-" + pObjOrigin.gNum)
+                            .attr("ccID", ccNodeID) //copyID for pipeline modules
+                            .attr("type", "I/O")
+                            .attr("kind", "output")
+                            .attr("parentG", "g" + MainGNum + "-" + pObjSub.gNum)
+                            .attr("name", ccNode.attr('name'))
+                            .attr("status", "standard")
+                            .attr("connect", "single")
+                            .attr("class", ccNode.attr('class'))
+                            .attr("cx", calculatePos(pObjSub.outNodes.length, k, "cx", "outputsPipe"))
+                            .attr("cy", calculatePos(pObjSub.outNodes.length, k, "cy", "outputsPipe"))
+                            .attr("r", ior).attr("fill", "steelblue")
+                            .attr('fill-opacity', 0.8)
+                            .on("mouseover", IOmouseOver)
+                            .on("mousemove", IOmouseMove)
+                            .on("mouseout", IOmouseOut)
+                        //                    .on("mousedown", IOconnect)
                     }
                 }
-            }
-            //I / O id naming: [0] i = input, o = output - [1] process database ID - [2] The number of I / O of the selected process - [3] Parameter database ID - [4] uniqe number
-            var c = 0;
-            $.each(pObjSub.inNodes, function (k) {
-                if (pObjSub.inNodes[k].length === 1) {
-                    var proId = pObjSub.inNodes[k][0].split("-")[1];
-                    var parId = pObjSub.inNodes[k][0].split("-")[3];
-                    var ccNodeId = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][0];
-                    var ccNode = $("#" + ccNodeId);
-                    ccIDList[prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum] = ccNodeId;
-                    d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
-                        .attr("id", prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum)
-                        .attr("ccID", ccNodeId) //copyID for pipeline modules
-                        .attr("type", "I/O")
-                        .attr("kind", "input")
-                        .attr("parentG", "g" + MainGNum + "-" + pObjOrigin.gNum)
-                        .attr("name", ccNode.attr('name'))
-                        .attr("status", "standard")
-                        .attr("connect", "single")
-                        .attr("class", ccNode.attr('class'))
-                        .attr("cx", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cx", "inputsPipe"))
-                        .attr("cy", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cy", "inputsPipe"))
-                        .attr("r", ior)
-                        .attr("fill", "tomato")
-                        .attr('fill-opacity', 0.8)
-                        .on("mouseover", IOmouseOver)
-                        .on("mousemove", IOmouseMove)
-                        .on("mouseout", IOmouseOut)
-                    //                        .on("mousedown", IOconnect)
-                    c++;
-                } else if (pObjSub.inNodes[k].length > 1) {
-                    pObjSub.ccIDAr = [];
-                    for (var i = 0; i < pObjSub.inNodes[k].length; i++) {
-                        pObjSub.ccIDAr[i] = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][i];
-                        var proId = pObjSub.inNodes[k][i].split("-")[1];
-                        var parId = pObjSub.inNodes[k][i].split("-")[3];
-                        ccIDList[prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum] = "p" + pObjSub.MainGNum + pObjSub.inNodes[k][i];
-                    }
-                    var ccNode = $("#" + pObjSub.ccIDAr[0])
-                    d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
-                        .attr("id", prefix + "i-" + proId + "-" + c + "-" + parId + "-" + pObjOrigin.gNum)
-                        .attr("ccID", pObjSub.ccIDAr) //copyID for pipeline modules
-                        .attr("type", "I/O")
-                        .attr("kind", "input")
-                        .attr("parentG", "g" + MainGNum + "-" + pObjOrigin.gNum)
-                        .attr("name", ccNode.attr('name'))
-                        .attr("status", "standard")
-                        .attr("connect", "single")
-                        .attr("class", ccNode.attr('class'))
-                        .attr("cx", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cx", "inputsPipe"))
-                        .attr("cy", calculatePos(Object.keys(pObjSub.inNodes).length, c, "cy", "inputsPipe"))
-                        .attr("r", ior)
-                        .attr("fill", "tomato")
-                        .attr('fill-opacity', 0.8)
-                        .on("mouseover", IOmouseOver)
-                        .on("mousemove", IOmouseMove)
-                        .on("mouseout", IOmouseOut)
-                    //                        .on("mousedown", IOconnect)
-                    c++;
-                }
-            })
-            for (var k = 0; k < pObjSub.outNodes.length; k++) {
-                var proId = pObjSub.outNodes[k].split("-")[1];
-                var parId = pObjSub.outNodes[k].split("-")[3];
-                var ccNodeID = "p" + pObjSub.MainGNum + pObjSub.outNodes[k];
-                var ccNode = $("#" + ccNodeID)
-                ccIDList[prefix + "o-" + proId + "-" + k + "-" + parId + "-" + pObjOrigin.gNum] = ccNodeID;
-                d3.select("#g" + MainGNum + "-" + pObjOrigin.gNum).append("circle")
-                    .attr("id", prefix + "o-" + proId + "-" + k + "-" + parId + "-" + pObjOrigin.gNum)
-                    .attr("ccID", ccNodeID) //copyID for pipeline modules
-                    .attr("type", "I/O")
-                    .attr("kind", "output")
-                    .attr("parentG", "g" + MainGNum + "-" + pObjSub.gNum)
-                    .attr("name", ccNode.attr('name'))
-                    .attr("status", "standard")
-                    .attr("connect", "single")
-                    .attr("class", ccNode.attr('class'))
-                    .attr("cx", calculatePos(pObjSub.outNodes.length, k, "cx", "outputsPipe"))
-                    .attr("cy", calculatePos(pObjSub.outNodes.length, k, "cy", "outputsPipe"))
-                    .attr("r", ior).attr("fill", "steelblue")
-                    .attr('fill-opacity', 0.8)
-                    .on("mouseover", IOmouseOver)
-                    .on("mousemove", IOmouseMove)
-                    .on("mouseout", IOmouseOut)
-                //                    .on("mousedown", IOconnect)
             }
         }
     }
@@ -2583,9 +2823,7 @@ function scMouseOut() {
 }
 
 
-function removeDelCircle(lineid) {
-    d3.select("#c--" + lineid).remove()
-}
+
 var tooltip = d3.select("body")
 .append("div").attr("class", "tooltip-svg")
 .style("position", "absolute")
@@ -2908,6 +3146,77 @@ function insertInRow(inRow, paramGivenName, rowType, insertType) {
     }
 }
 
+function showHideColumnRunSett(colList, type) {
+    for (var k = 0; k < colList.length; k++) {
+        var processTableCol = colList[k] + 2;
+        if (type == "hide") {
+            $('#allProcessSettTable').find('th:nth-child(' + colList[k] + ')').hide();
+            $('#allProcessSettTable').find('td:nth-child(' + colList[k] + ')').hide();
+            var doCall = function (processTableCol) {
+                setTimeout(function () {
+                    $('#processTable').find('th:nth-child(' + processTableCol + ')').hide();
+                    $('#processTable').find('tr >td:nth-child(' + processTableCol + ')').hide();
+                }, 100);
+            }
+            doCall(processTableCol);
+        } else {
+            $('#allProcessSettTable').find('th:nth-child(' + colList[k] + ')').show();
+            $('#allProcessSettTable').find('td:nth-child(' + colList[k] + ')').show();
+            var doCall = function (processTableCol) {
+                setTimeout(function () {
+                    $('#processTable').find('th:nth-child(' + processTableCol + ')').show();
+                    $('#processTable').find('tr >td:nth-child(' + processTableCol + ')').show();
+                }, 100);
+            }
+            doCall(processTableCol);
+        }
+    }
+}
+
+function showhideOnEnv(allProSett, profileData){
+    var perms = profileData[0].perms;
+    var executor_job = profileData[0].executor_job;
+    // shared run environments
+    if (perms == "15"){
+        $('#rOut_dirDiv').css("display", "none");
+        $('#publishDirHide').css("display", "none");
+        $('#jobSettingsDiv').css("display", "none");
+        $('#runCmdDiv').css("display", "none");
+        $('#intermeDelDiv').css("display", "none");
+        $('#target_dir_div').css("display", "none");
+        $('#archive_dir_geo_div').css("display", "none");
+        $('#archive_dir_div').css("display", "none");
+    } else {
+        if (profileData[0].google_cre_id != undefined){
+            $('#rOut_dirDiv').css("display", "none");
+        } else {
+            $('#rOut_dirDiv').css("display", "block");
+        }
+        $('#publishDirHide').css("display", "block");
+        $('#jobSettingsDiv').css("display", "block");
+        $('#runCmdDiv').css("display", "block");
+        $('#intermeDelDiv').css("display", "block");
+        $('#target_dir_div').css("display", "block");
+        $('#archive_dir_geo_div').css("display", "block");
+        $('#archive_dir_div').css("display", "block");
+    }
+    if (executor_job === 'ignite') {
+        showHideColumnRunSett([1, 4, 5], "show")
+        showHideColumnRunSett([1, 4], "hide")
+    } else if (executor_job === 'local') {
+        showHideColumnRunSett([1, 4, 5], "hide")
+    } else {
+        showHideColumnRunSett([1, 4, 5], "show")
+    }
+    if (executor_job === "slurm"){
+        $('#eachProcessQueue').text('Partition');
+        $('#allProcessQueue').text('Partition');
+    }else {
+        $('#eachProcessQueue').text('Queue');
+        $('#allProcessQueue').text('Queue');
+    }
+}
+
 //*** if variable start with "params." then  insertInputRowParams function is used to insert rows into inputs table.
 //*** if input circle is defined in workflow then insertInputOutputRow function is used to insert row into inputs table based on edges of input parameters.
 function insertInputOutputRow(rowType, MainGNum, firGnum, secGnum, pObj, prefix, second) {
@@ -3046,73 +3355,95 @@ function createEdges(first, second, pObj) {
         MainGNum = pObj.MainGNum;
         prefix = "p" + MainGNum;
     }
-    d3.selectAll("#" + prefix + first).attr("connect", 'mate')
-    d3.selectAll("#" + prefix + second).attr("connect", 'mate')
-    pObj.inputParamLocF = first.indexOf("o-inPro") //-1: inputparam not exist //0: first click is done on the inputparam
-    pObj.inputParamLocS = second.indexOf("o-inPro")
-    pObj.outputParamLocF = first.indexOf("i-outPro") //-1: outputparam not exist //0: first click is done on the inputparam
-    pObj.outputParamLocS = second.indexOf("i-outPro")
-
-
-    if (pObj.inputParamLocS === 0 || pObj.outputParamLocS === 0) { //second click is done on the circle of inputparam//outputparam
-        //swap elements and treat as fırst click was done on
-        pObj.tem = second
-        second = first
-        first = pObj.tem
-        pObj.inputParamLocF = 0
-        pObj.outputParamLocF = 0
-    }
-    //first click is done on the circle of inputparam
-    if (pObj.inputParamLocF === 0 || pObj.outputParamLocF === 0) {
-        //update the class of inputparam based on selected second circle
-        pObj.secClassName = updateSecClassName(prefix + second, pObj.inputParamLocF)
-        d3.selectAll("#" + prefix + first).attr("class", pObj.secClassName)
-        //update the parameter of the inputparam based on selected second circle
-        var firGnum = document.getElementById(prefix + first).id.split("-")[4] //first g-number
-        var secGnum = document.getElementById(prefix + second).id.split("-")[4] //first g-number
-        pObj.secPI = document.getElementById(prefix + second).id.split("-")[3] //second parameter id
-        var secProI = document.getElementById(prefix + second).id.split("-")[1] //second process id
-        pObj.patt = /(.*)-(.*)-(.*)-(.*)-(.*)/
-        pObj.secID = first.replace(pObj.patt, '$1-$2-$3-' + pObj.secPI + '-$5')
-
-        d3.selectAll("#" + prefix + first).attr("id", prefix + pObj.secID)
-        pObj.fClickOrigin = first
-        pObj.fClick = pObj.secID
-        pObj.sClick = second
-        var rowType = '';
-        //Pipeline details table 
-        if (pObj.inputParamLocF === 0) {
-            rowType = 'input';
-        } else if (pObj.outputParamLocF === 0) {
-            rowType = 'output';
+    if (!document.getElementById(prefix + first) && document.getElementById(prefix + second)) {
+        var newID = getNewNodeId(first, pObj);
+        if (newID) {
+            first = newID.replace(prefix, "")
         }
-        if (pObj == window) {
-            insertInputOutputRow(rowType, MainGNum, firGnum, secGnum, pObj, prefix, second);
+    } else if (document.getElementById(prefix + first) && !document.getElementById(prefix + second)) {
+        var newID = getNewNodeId(second, pObj);
+        if (newID) {
+            second = newID.replace(prefix, "")
+        }
+    } 
+
+    if (document.getElementById(prefix + second) && document.getElementById(prefix + first)) {
+        addCandidates2DictForLoad(first, pObj);
+        d3.selectAll("#" + prefix + first).attr("connect", 'mate')
+        d3.selectAll("#" + prefix + second).attr("connect", 'mate')
+        pObj.inputParamLocF = first.indexOf("o-inPro") //-1: inputparam not exist //0: first click is done on the inputparam
+        pObj.inputParamLocS = second.indexOf("o-inPro")
+        pObj.outputParamLocF = first.indexOf("i-outPro") //-1: outputparam not exist //0: first click is done on the inputparam
+        pObj.outputParamLocS = second.indexOf("i-outPro")
+
+
+        if (pObj.inputParamLocS === 0 || pObj.outputParamLocS === 0) { //second click is done on the circle of inputparam//outputparam
+            //swap elements and treat as fırst click was done on
+            pObj.tem = second
+            second = first
+            first = pObj.tem
+            pObj.inputParamLocF = 0
+            pObj.outputParamLocF = 0
+        }
+        //first click is done on the circle of inputparam
+        if (pObj.inputParamLocF === 0 || pObj.outputParamLocF === 0) {
+            //update the class of inputparam based on selected second circle
+            pObj.secClassName = updateSecClassName(prefix + second, pObj.inputParamLocF)
+            d3.selectAll("#" + prefix + first).attr("class", pObj.secClassName)
+            //update the parameter of the inputparam based on selected second circle
+            var firGnum = document.getElementById(prefix + first).id.split("-")[4] //first g-number
+            var firPI = document.getElementById(prefix + first).id.split("-")[3] //first parameter id
+            var secGnum = document.getElementById(prefix + second).id.split("-")[4] //first g-number
+            pObj.secPI = document.getElementById(prefix + second).id.split("-")[3] //second parameter id
+            var secProI = document.getElementById(prefix + second).id.split("-")[1] //second process id
+            if (firPI == "inPara" || firPI == "outPara" ){
+                pObj.patt = /(.*)-(.*)-(.*)-(.*)-(.*)/
+                pObj.secID = first.replace(pObj.patt, '$1-$2-$3-' + pObj.secPI + '-$5') 
+                d3.selectAll("#" + prefix + first).attr("id", prefix + pObj.secID)
+            } else {
+                //don't update input/output param id after first connection
+                pObj.secID = first;
+            }
+            pObj.fClickOrigin = first
+            pObj.fClick = pObj.secID
+            pObj.sClick = second
+            var rowType = '';
+            //Pipeline details table 
+            if (pObj.inputParamLocF === 0) {
+                rowType = 'input';
+            } else if (pObj.outputParamLocF === 0) {
+                rowType = 'output';
+            }
+            if (pObj == window) {
+                insertInputOutputRow(rowType, MainGNum, firGnum, secGnum, pObj, prefix, second);
+            }
+
+        } else { //process to process connection
+            pObj.fClickOrigin = first
+            pObj.fClick = first
+            pObj.sClick = second
         }
 
-    } else { //process to process connection
-        pObj.fClickOrigin = first
-        pObj.fClick = first
-        pObj.sClick = second
+        d3.select("#mainG" + MainGNum).append("line")
+            .attr("id", prefix + pObj.fClick + "_" + prefix + pObj.sClick)
+            .attr("class", "line")
+            .attr("type", "standard")
+            .style("stroke", "#B0B0B0").style("stroke-width", 4)
+            .attr("x1", pObj.candidates[prefix + pObj.fClickOrigin][0])
+            .attr("y1", pObj.candidates[prefix + pObj.fClickOrigin][1])
+            .attr("x2", pObj.candidates[prefix + pObj.sClick][0])
+            .attr("y2", pObj.candidates[prefix + pObj.sClick][1])
+            .attr("g_from", pObj.candidates[prefix + pObj.fClickOrigin][2])
+            .attr("g_to", pObj.candidates[prefix + pObj.sClick][2])
+            .attr("IO_from", prefix + pObj.fClick)
+            .attr("IO_to", prefix + pObj.sClick)
+            .attr("stroke-width", 2)
+            .attr("stroke", "black")
+
+        pObj.edges.push(prefix + pObj.fClick + "_" + prefix + pObj.sClick)
+    }else {
+        console.log("EDGE FAILED: prefix:",prefix +" MainGNum:"+ MainGNum + "Edge" + first + "_" +second)
     }
-
-    d3.select("#mainG" + MainGNum).append("line")
-        .attr("id", prefix + pObj.fClick + "_" + prefix + pObj.sClick)
-        .attr("class", "line")
-        .attr("type", "standard")
-        .style("stroke", "#B0B0B0").style("stroke-width", 4)
-        .attr("x1", pObj.candidates[prefix + pObj.fClickOrigin][0])
-        .attr("y1", pObj.candidates[prefix + pObj.fClickOrigin][1])
-        .attr("x2", pObj.candidates[prefix + pObj.sClick][0])
-        .attr("y2", pObj.candidates[prefix + pObj.sClick][1])
-        .attr("g_from", pObj.candidates[prefix + pObj.fClickOrigin][2])
-        .attr("g_to", pObj.candidates[prefix + pObj.sClick][2])
-        .attr("IO_from", prefix + pObj.fClick)
-        .attr("IO_to", prefix + pObj.sClick)
-        .attr("stroke-width", 2)
-        .attr("stroke", "black")
-
-    pObj.edges.push(prefix + pObj.fClick + "_" + prefix + pObj.sClick)
 
 }
 
@@ -3174,6 +3505,7 @@ function createProcessPanelAutoFill(id, pObj, name, process_id) {
                             }
                         });
                     });
+                    bindEveHandlerChooseEnv(pro_autoFillJSON, "process");
                     bindEveHandler(pro_autoFillJSON);
                 }
             }, 1000);
@@ -3444,9 +3776,10 @@ function loadPipelineDetails(pipeline_id, pipeData) {
             window.pipeObj = s
             window.ajaxData.pipelineData = [window.pipeObj["main_pipeline_" + pipeline_id]];
             var pData = window.ajaxData.pipelineData
-            $('#pipeline-title').text(pData[0].name);
+            var pName = pData[0].name + " (Rev " + pData[0].rev_id + ")";
+            $('#pipeline-title').text(pName);
             $('#pipeline-title').attr('href', 'index.php?np=1&id=' + pipeline_id);
-            $('#pipeline-title2').html('<i class="fa fa-spinner "></i> Go to Pipeline: ' + pData[0].name);
+            $('#pipeline-title2').html('<i class="fa fa-spinner "></i> Go to Pipeline: ' + pName);
             $('#pipeline-title2').attr('href', 'index.php?np=1&id=' + pipeline_id);
             $('#project-title').attr('href', 'index.php?np=2&id=' + project_id);
             $('#pipelineSum').val(decodeHtml(pData[0].summary));
@@ -3470,7 +3803,7 @@ function loadPipelineDetails(pipeline_id, pipeData) {
                 autoFillJSON = decodeGenericCond(autoFillJSON);
 
             }
-            // first openPipeline  will create tables and forms
+            // first openPipeline() will create tables and forms
             // then loadProjectPipeline will load process options
             var sequentialCmd = function (pipeline_id, callback){
                 openPipeline(pipeline_id);
@@ -3478,9 +3811,8 @@ function loadPipelineDetails(pipeline_id, pipeData) {
             }
             sequentialCmd(pipeline_id,function(){
                 //## position where all inputs created and filled
-                loadProjectPipeline(pipeData); // will load process options
+                loadProjectPipeline(pipeData) // will load process options
             })
-
         },
         error: function (errorThrown) {
             alert("Error: " + errorThrown);
@@ -3537,32 +3869,7 @@ function refreshCreatorData(project_pipeline_id) {
 
 
 
-function showHideColumnRunSett(colList, type) {
-    for (var k = 0; k < colList.length; k++) {
-        var processTableCol = colList[k] + 2;
-        if (type == "hide") {
-            $('#allProcessSettTable').find('th:nth-child(' + colList[k] + ')').hide();
-            $('#allProcessSettTable').find('td:nth-child(' + colList[k] + ')').hide();
-            var doCall = function (processTableCol) {
-                setTimeout(function () {
-                    $('#processTable').find('th:nth-child(' + processTableCol + ')').hide();
-                    $('#processTable').find('tr >td:nth-child(' + processTableCol + ')').hide();
-                }, 100);
-            }
-            doCall(processTableCol);
-        } else {
-            $('#allProcessSettTable').find('th:nth-child(' + colList[k] + ')').show();
-            $('#allProcessSettTable').find('td:nth-child(' + colList[k] + ')').show();
-            var doCall = function (processTableCol) {
-                setTimeout(function () {
-                    $('#processTable').find('th:nth-child(' + processTableCol + ')').show();
-                    $('#processTable').find('tr >td:nth-child(' + processTableCol + ')').show();
-                }, 100);
-            }
-            doCall(processTableCol);
-        }
-    }
-}
+
 
 
 function loadProjectPipeline(pipeData) {
@@ -3574,7 +3881,7 @@ function loadProjectPipeline(pipeData) {
     $('#rOut_dir').val(pipeData[0].output_dir);
     $('#publish_dir').val(pipeData[0].publish_dir);
     $('#chooseEnv').val(pipeData[0].profile);
-    $('#perms').val(pipeData[0].perms);
+    $('#permsRun').val(pipeData[0].perms);
     $('#runCmd').val(pipeData[0].cmd);
     $('#docker_img').val(pipeData[0].docker_img);
     $('#docker_opt').val(pipeData[0].docker_opt);
@@ -3592,6 +3899,7 @@ function loadProjectPipeline(pipeData) {
     updateCheckBox('#withDag', pipeData[0].withDag);
     updateCheckBox('#withTimeline', pipeData[0].withTimeline);
     checkShub()
+
     //load process options 
     if (pipeData[0].process_opt) {
         //fill process options table
@@ -3600,15 +3908,30 @@ function loadProjectPipeline(pipeData) {
     // bind event handlers for autofill
     setTimeout(function () {
         if (autoFillJSON !== null && autoFillJSON !== undefined) {
+            bindEveHandlerChooseEnv(autoFillJSON, "pipeline");
             bindEveHandler(autoFillJSON);
+            // if duplicated run has refreshEnv trigger refreshEnv when page loads
+            if (pipeData[0].onload){
+                if (pipeData[0].onload == "refreshEnv"){
+                    console.log("onload refreshEnv")
+                    refreshEnv();
+                }
+            }
         }
     }, 1000);
-    //load amazon keys for possible s3 connection
-    loadAmzKeys();
+    checkCloudType(pipeData[0].profile)
+    //load cloud keys for possible s3/gs connection
+    loadCloudKeys();
     if (pipeData[0].amazon_cre_id !== "0") {
         $('#mRunAmzKey').val(pipeData[0].amazon_cre_id);
     } else {
-        selectAmzKey();
+        selectCloudKey("amazon");
+    }
+
+    if (pipeData[0].google_cre_id !== "0") {
+        $('#mRunGoogKey').val(pipeData[0].google_cre_id);
+    } else {
+        selectCloudKey("google");
     }
 
     //load user groups
@@ -3617,11 +3940,11 @@ function loadProjectPipeline(pipeData) {
         for (var i = 0; i < allUserGrp.length; i++) {
             var param = allUserGrp[i];
             var optionGroup = new Option(param.name, param.id);
-            $("#groupSel").append(optionGroup);
+            $("#groupSelRun").append(optionGroup);
         }
     }
     if (pipeData[0].group_id !== "0") {
-        $('#groupSel').val(pipeData[0].group_id);
+        $('#groupSelRun').val(pipeData[0].group_id);
     }
 
     var chooseEnv = $('#chooseEnv option:selected').val();
@@ -3644,25 +3967,10 @@ function loadProjectPipeline(pipeData) {
     // clean depricated project pipeline inputs(propipeinputs) in case it is not found in the inputs table.
     cleanDepProPipeInputs();
     // fill executor settings:
-    if (pipeData[0].profile !== "" && chooseEnv && chooseEnv !== "") {
+    if (pipeData[0].profile !== "" && chooseEnv) {
         var [allProSett, profileData] = getJobData("both");
-        var executor_job = profileData[0].executor_job;
-        if (executor_job === 'ignite') {
-            showHideColumnRunSett([1, 4, 5], "show")
-            showHideColumnRunSett([1, 4], "hide")
-        } else if (executor_job === 'local') {
-            showHideColumnRunSett([1, 4, 5], "hide")
-        } else {
-            showHideColumnRunSett([1, 4, 5], "show")
-        }
-        if (executor_job === "slurm"){
-            $('#eachProcessQueue').text('Partition');
-            $('#allProcessQueue').text('Partition');
-        }else {
-            $('#eachProcessQueue').text('Queue');
-            $('#allProcessQueue').text('Queue');
-        }
-        $('#jobSettingsDiv').css('display', 'inline');
+        showhideOnEnv(allProSett, profileData)
+
         //insert exec_all_settings data into allProcessSettTable table
         if (IsJsonString(decodeHtml(pipeData[0].exec_all_settings))) {
             var exec_all_settings = JSON.parse(decodeHtml(pipeData[0].exec_all_settings));
@@ -3681,7 +3989,6 @@ function loadProjectPipeline(pipeData) {
         $('#jobSettingsDiv').css('display', 'none');
     }
     setTimeout(function () { checkReadytoRun(); }, 1000);
-
 }
 
 
@@ -3700,22 +4007,50 @@ function loadRunOptions(type) {
     var selectedOpt = $('#chooseEnv').find(":selected").val();
     $('#chooseEnv').find('option').not(':disabled').remove();
     //get profiles for user
-    var proCluData = getValues({ p: "getProfileCluster" });
-    var proAmzData = getValues({ p: "getProfileAmazon" });
-    if (proCluData && proAmzData) {
-        if (proCluData.length + proAmzData.length !== 0) {
-            $.each(proCluData, function (el) {
-                var option = new Option(proCluData[el].name + ' (Remote machine: ' + proCluData[el].username + '@' + proCluData[el].hostname + ')', 'cluster-' + proCluData[el].id)
-                option.setAttribute("host", proCluData[el].hostname);
+    var proData = getValues({ p: "getProfiles", type:"run" });
+    if (proData) {
+        for (var c = 0; c < proData.length; c++) {
+            var data = proData[c]
+            if (data.hostname != undefined){
+                var option = "";
+                if (data.perms == "15"){
+                    option = new Option(data.name, 'cluster-' + data.id)
+                } else{
+                    option = new Option(data.name + ' (Remote machine: ' + data.username + '@' + data.hostname + ')', 'cluster-' + data.id)
+                }
+                option.setAttribute("host", data.hostname);
+                option.setAttribute("perms", data.perms);
+                option.setAttribute("auto_workdir", data.auto_workdir);
                 $("#chooseEnv").append(option);
-            });
-            $.each(proAmzData, function (el) {
-                var option = new Option(proAmzData[el].name + ' (Amazon: Status:' + proAmzData[el].status + ' Image id:' + proAmzData[el].image_id + ' Instance type:' + proAmzData[el].instance_type + ')', 'amazon-' + proAmzData[el].id)
-                option.setAttribute("host", proAmzData[el].shared_storage_id);
-                option.setAttribute("status", proAmzData[el].status);
-                option.setAttribute("amz_key", proAmzData[el].amazon_cre_id);
+            } else if (data.amazon_cre_id != undefined){
+                var option = "";
+                if (data.perms == "15"){
+                    option = new Option(data.name, 'amazon-' + data.id)
+                } else{
+                    option = new Option(data.name + ' (Amazon: Status:' + data.status + ' Image id:' + data.image_id + ' Instance type:' + data.instance_type + ')', 'amazon-' + data.id)
+                }
+                // check ajaxquery.php getProfileVariables-> for host definitions
+                option.setAttribute("host", data.shared_storage_id);
+                option.setAttribute("perms", data.perms);
+                option.setAttribute("status", data.status);
+                option.setAttribute("amz_key", data.amazon_cre_id);
+                option.setAttribute("auto_workdir", data.auto_workdir);
                 $("#chooseEnv").append(option);
-            });
+            } else if (data.google_cre_id != undefined){
+                var option = "";
+                if (data.perms == "15"){
+                    option = new Option(data.name, 'google-' + data.id)
+                } else{
+                    option = new Option(data.name + ' (Google: Status:' + data.status + ' Image id:' + data.image_id + ' Instance type:' + data.instance_type + ')', 'google-' + data.id)
+                }
+                // check ajaxquery.php getprofilevariables-> for host definitions
+                option.setAttribute("host", data.image_id);
+                option.setAttribute("perms", data.perms);
+                option.setAttribute("status", data.status);
+                option.setAttribute("goog_key", data.google_cre_id);
+                option.setAttribute("auto_workdir", data.auto_workdir);
+                $("#chooseEnv").append(option);
+            }
         }
     }
     if (selectedOpt) {
@@ -3756,7 +4091,7 @@ function insertSelectInput(rowID, gNumParam, filePath, proPipeInputID, qualifier
         if (url || urlzip){
             showUrlIcon = "";
         }
-        var urlIcon = '<button type="button" class="btn"  url="'+urlData+'" urlzip="'+urlzipData+'" checkpath="'+checkPathData+'" style="'+showUrlIcon+' padding:0px; margin-right:2px;" id="urlBut-'+rowID+'" ><a data-toggle="tooltip" data-placement="bottom" data-original-title="Download Info"><span><i style="font-size: 16px;" class="fa fa-cloud-download"></i></span></a></button>'
+        var urlIcon = '<button type="button" class="btn"  url="'+urlData+'" urlzip="'+urlzipData+'" checkpath="'+checkPathData+'" style="'+showUrlIcon+' background:none; padding:0px; margin-right:2px;" id="urlBut-'+rowID+'" ><a data-toggle="tooltip" data-placement="bottom" data-original-title="Download Info"><span><i style="font-size: 16px;" class="fa fa-cloud-download"></i></span></a></button>'
 
         filePath = escapeHtml(filePath);
         var collectionAttr = ' collection_id="" ';
@@ -3932,6 +4267,70 @@ function editFileSetValModal(data, sType, inputID, collection) {
     checkInputEdit(data, gNumParam, given_name, qualifier, rowID, sType, proPipeInputID, inputID, collection, url, urlzip, checkPath);
     checkReadytoRun();
 }
+
+//keep record of missing variables
+function addMissingVar(defName){
+    if (defName){
+        if (defName.match(/\$\{(.*)\}/)){
+            var missingAr = defName.split("\${");
+            for (var i = 0; i < missingAr.length; i++) {
+                if (missingAr[i].match(/}/)){
+                    var missingVar = missingAr[i].substring(0, missingAr[i].indexOf('}'));
+                    if (missingVar){
+                        //global object for missing variables
+                        if (!window["undefinedVarObj"]){
+                            window["undefinedVarObj"] = {};
+                        } 
+                        if (window["undefinedVarObj"]){
+                            window["undefinedVarObj"][missingVar] = "";
+                        }
+                    }
+                }
+            }
+        } 
+    }
+}
+
+function checkMissingVar(){
+    window["undefinedVarObj"] = {};
+    var systemInputAr = $('#inputsTable > tbody').find('td[given_name]').filter(function () {
+        return systemInputs.indexOf($(this).attr('given_name')) > -1
+    });
+    //get all system input paths
+    for (var i = 0; i < systemInputAr.length; i++) {
+        var inputSpan = $(systemInputAr[i]).find("span[id*='filePath']");
+        if (inputSpan && inputSpan[0]) {
+            var inputPath = $(inputSpan[0]).text();
+            addMissingVar(inputPath)
+        }
+    }
+
+    if (!$.isEmptyObject(window["undefinedVarObj"])){
+        var egText = ""
+        var undefinedVarAr = []
+        var warnText = "Undefined variables found in your system inputs: ";
+        var icon ='<button type="button" class="btn" data-backdrop="false" onclick="refreshEnv()" style="background:none; padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Refresh Environments"><i class="fa fa-refresh" style="font-size: 14px;"></i></a></button>';
+        $.each(window["undefinedVarObj"], function (el) {
+            undefinedVarAr.push(el);
+            egText += el + ' = "/yourpath"</br>'
+        });
+        warnText += undefinedVarAr.join(", ") + ". "
+        warnText += 'Please define these variables inside <a href="index.php?np=4"><b>Profile Variables</b> </a> section of your run environment. e.g.</br>'
+        warnText += egText
+        warnText += 'Then please reload this page and click <b>Refresh Environments</b> button '+icon+' to autofill system inputs.'
+        if (!document.getElementById("undefinedVar")){
+            var warningPanel = '<div id="undefinedVar" class="panel panel-danger" style="border:2px solid #E08D08; background-color:#e08d080f;"><div class="panel-body"><span id="undefText">'+warnText+'</span></div></div>'
+            $("#warningSection").append(warningPanel)
+        } else {
+            $("#undefText").html(warnText)
+
+        }
+    } else {
+        $("#warningSection> #undefinedVar").remove()
+    }
+}
+
+
 checkType = "";
 //checkType become "rerun" or "resumerun" when rerun or resume button is clicked.
 function checkReadytoRun(type) {
@@ -3939,6 +4338,7 @@ function checkReadytoRun(type) {
     if (checkType === "") {
         checkType = type || "";
     }
+    checkMissingVar()
     runStatus = getRunStatus(project_pipeline_id);
     project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
     var getProPipeInputs = getValues({
@@ -3947,19 +4347,13 @@ function checkReadytoRun(type) {
     });
     var numInputRows = $('#inputsTable > tbody').find('tr[id*=input]').length; //find input rows
     var profileNext = $('#chooseEnv').find(":selected").val();
-    var profileNextText = $('#chooseEnv').find(":selected").html();
-    if (profileNextText) {
-        if (profileNextText.match(/Amazon: Status:/)) {
-            var patt = /(.*)Amazon: Status:(.*) Image(.*)/;
-            var amzStatus = profileNextText.replace(patt, '$2');
-        }
-    }
-    var output_dir = $.trim($('#rOut_dir').val());
+    var cloudStatus = $('#chooseEnv').find(":selected").attr("status")
+    var output_dir = $runscope.getPubVal("work");
 
     var publishReady = false;
     var publish_dir_check = $('#publish_dir_check').is(":checked").toString();
     if (publish_dir_check === "true") {
-        var publish_dir = $('#publish_dir').val();
+        var publish_dir = $runscope.getPubVal("publish");
         if (publish_dir !== "") {
             publishReady = true;
         } else {
@@ -3970,22 +4364,16 @@ function checkReadytoRun(type) {
         publishReady = true;
     }
     //check if s3: is defined in publish_dir and getProPipeInputs
-    var s3check = checkS3(publish_dir, getProPipeInputs);
-    var s3value = $('#mRunAmzKey').val();
-    if (s3check === true && s3value !== null) {
-        var s3status = true;
-    } else if (s3check === false) {
-        var s3status = true;
-    } else {
-        var s3status = false;
-    }
+    var s3Status = checkCloudPatt("s3:", "#mRunAmzKeyDiv", '#mRunAmzKey', publish_dir, getProPipeInputs);
+    //    var gsStatus = checkCloudPatt("gs:", "#mRunGoogKeyDiv", '#mRunGoogKey', publish_dir, getProPipeInputs);
+
     //if ready and not running/waits/error
-    if (publishReady && s3status && getProPipeInputs.length >= numInputRows && profileNext !== '' && output_dir !== '') {
+    if (publishReady && s3Status && getProPipeInputs.length >= numInputRows && profileNext !== '' && output_dir !== '') {
         console.log("initial runStatus")
         console.log(runStatus)
         if (runStatus == "" || checkType === "rerun" || checkType === "newrun" || checkType === "resumerun") {
-            if (amzStatus) {
-                if (amzStatus === "running") {
+            if (cloudStatus) {
+                if (cloudStatus === "running") {
                     console.log(checkType)
                     if (checkType === "rerun" || checkType === "resumerun") {
                         runStatus = "aboutToStart"
@@ -4052,11 +4440,36 @@ function checkShub() {
     }
 }
 
+function checkCloudType(profileTypeId){
+    if (profileTypeId){
+        var patt = /(.*)-(.*)/;
+        var proType = profileTypeId.replace(patt, '$1');
+        if (proType){
+            if (proType == "amazon"){
+                $("#mArchAmzS3Div_GEO").css('display', "block");
+                $("#mArchAmzS3Div").css('display', "block");
+                $("#mArchGoogGSDiv").css('display', "none");
+                $("#mArchGoogGSDiv_GEO").css('display', "none");
+            } else if (proType == "google"){
+                $("#mArchAmzS3Div_GEO").css('display', "none");
+                $("#mArchAmzS3Div").css('display', "none");
+                $("#mArchGoogGSDiv").css('display', "block");
+                $("#mArchGoogGSDiv_GEO").css('display', "block");
+            } else{
+                $("#mArchAmzS3Div_GEO").css('display', "block");
+                $("#mArchAmzS3Div").css('display', "block");
+                $("#mArchGoogGSDiv").css('display', "block");
+                $("#mArchGoogGSDiv_GEO").css('display', "block");
+            }
+        }  
+    }
+
+}
 
 function checkWorkDir(){
     var showInfoM = false
     var infoModalText = "Please check your work directory:"
-    var output_dir = $.trim($('#rOut_dir').val());
+    var output_dir = $runscope.getPubVal("work")
     if (output_dir){
         // full path should start with slash
         if (output_dir[0] != "/"){
@@ -4088,14 +4501,27 @@ $("#publish_dir_check").click(function () {
 //file import modal
 $("#file_dir").keyup(function () {
     autoCheckS3("#file_dir", "#mRunAmzKeyS3Div");
+    //    autoCheckGS("#file_dir", "#mRunGoogKeyGSDiv");
 });
 $("#s3_archive_dir_geo").keyup(function () {
     autoCheckS3("#s3_archive_dir_geo", "#mArchAmzKeyS3Div_GEO");
 });
 
+
 $("#s3_archive_dir").keyup(function () {
     autoCheckS3("#s3_archive_dir", "#mArchAmzKeyS3Div");
 });
+
+//$("#gs_archive_dir").keyup(function () {
+//    autoCheckGS("#gs_archive_dir", "#mArchGoogKeyGSDiv");
+//});
+//
+//$("#gs_archive_dir_geo").keyup(function () {
+//    autoCheckGS("#gs_archive_dir_geo", "#mArchGoogKeyGSDiv_GEO");
+//});
+
+
+
 
 var timeoutCheck = 0;
 function autoCheck(type) {
@@ -4118,29 +4544,33 @@ function autoCheck(type) {
     }
 }
 
-var timeoutCheckS3 = 0;
-function autoCheckS3(inputID,showDivId) {
-    if (timeoutCheckS3) {
-        clearTimeout(timeoutCheckS3);
-    }
-    timeoutCheckS3 = setTimeout(function () { checkS3filePath(inputID,showDivId) }, 2000);
+
+timeoutCheckGS = 0;
+function autoCheckGS(inputID,showDivId) {
+    var pattern ="gs:";
+    if (timeoutCheckGS) { clearTimeout(timeoutCheckGS); }
+    timeoutCheckGS = setTimeout(function () { checkCloudfilePath(pattern, inputID,showDivId) }, 2000);
 }
 
-var timeoutCheckWorkDir = 0;
+timeoutCheckS3 = 0;
+function autoCheckS3(inputID,showDivId) {
+    var pattern ="s3:";
+    if (timeoutCheckS3) { clearTimeout(timeoutCheckS3); }
+    timeoutCheckS3 = setTimeout(function () { checkCloudfilePath(pattern, inputID,showDivId) }, 2000);
+}
+
+timeoutCheckWorkDir = 0;
 function autoCheckWorkDir() {
-    if (timeoutCheckWorkDir) {
-        clearTimeout(timeoutCheckWorkDir);
-    }
+    if (timeoutCheckWorkDir) { clearTimeout(timeoutCheckWorkDir); }
     timeoutCheckWorkDir = setTimeout(function () { checkWorkDir() }, 3000);
 }
 
 //check if file import path contains s3:// pattern and shows aws menu
-function checkS3filePath(inputID,showDivId) {
+function checkCloudfilePath(pattern, inputID,showDivId) {
     var file_path = $(inputID).val();
-    var s3pattern = 's3:';
     var pathCheck = false;
     if (file_path !== '') {
-        if (file_path.indexOf(s3pattern) > -1) {
+        if (file_path.toLowerCase().indexOf(pattern) > -1) {
             $(showDivId).css('display', "block");
             pathCheck = true;
         } 
@@ -4152,13 +4582,13 @@ function checkS3filePath(inputID,showDivId) {
 
 
 //check if path contains s3:// pattern and shows aws menu
-function checkS3(path, getProPipeInputs) {
+function checkCloudPatt(pattern, div, key, path, getProPipeInputs) {
+    var pattCheck;
     //path part
-    var s3pattern = 's3:';
     var pathCheck = false;
     if (path !== '') {
-        if (path.indexOf(s3pattern) > -1) {
-            $("#mRunAmzKeyDiv").css('display', "inline");
+        if (path.toLowerCase().indexOf(pattern) > -1) {
+            $(div).css('display', "inline");
             pathCheck = true;
         } else {
             pathCheck = false;
@@ -4171,21 +4601,30 @@ function checkS3(path, getProPipeInputs) {
     $.each(getProPipeInputs, function (el) {
         var inputName = getProPipeInputs[el].name;
         if (inputName) {
-            if (inputName.indexOf(s3pattern) > -1) {
-                $("#mRunAmzKeyDiv").css('display', "inline");
+            if (inputName.indexOf(pattern) > -1) {
+                $(div).css('display', "inline");
                 nameCheck = nameCheck + 1;
             }
         }
     });
     if (nameCheck === 0 && pathCheck === false) {
-        $("#mRunAmzKeyDiv").css('display', "none");
-        return false;
+        $(div).css('display', "none");
+        pattCheck = false;
     } else {
-        return true;
+        pattCheck = true;
     }
+
+    var keyvalue = $(key).val();
+    var status = false;
+    if (pattCheck === true && keyvalue !== null) {
+        status = true;
+    } else if (pattCheck === false) {
+        status = true;
+    }
+    return status;
 }
 
-function loadAmzKeys() {
+function loadCloudKeys() {
     var data = getValues({ p: "getAmz" });
     if (data && data != "") {
         $.each(data, function (i, item) {
@@ -4195,61 +4634,92 @@ function loadAmzKeys() {
             $('#mArchAmzKeyS3_GEO').append($('<option>', { value: item.id, text : item.name }));
         });
     }
-}
-//autoselect mRunAmzKey based on selected profile
-function selectAmzKey() {
-    var amzKeyId = $("#chooseEnv").find(":selected").attr('amz_key')
-    if (amzKeyId) {
-        $("#mRunAmzKey").val(parseInt(amzKeyId));
-        $("#mRunAmzKeyS3").val(parseInt(amzKeyId));
-        $("#mArchAmzKeyS3").val(parseInt(amzKeyId));
-        $("#mArchAmzKeyS3_GEO").val(parseInt(amzKeyId));
-        $("#mRunAmzKey").trigger("change");
-        $("#mRunAmzKeyS3").trigger("change");
-        $("#mArchAmzKeyS3").trigger("change");
-        $("#mArchAmzKeyS3_GEO").trigger("change");
-    } 
+    var dataG = getValues({ p: "getGoogle" });
+    if (dataG && dataG != "") {
+        $.each(dataG, function (i, item) {
+            $('#mRunGoogKey').append($('<option>', { value: item.id, text : item.name }));
+            $('#mRunGoogKeyGS').append($('<option>', { value: item.id, text : item.name }));
+            $('#mArchGoogKeyGS').append($('<option>', { value: item.id, text : item.name }));
+            $('#mArchGoogKeyGS_GEO').append($('<option>', { value: item.id, text : item.name }));
+        });
+    }
 }
 
-function configTextAllProcess(exec_all_settings, type, proName, executor_job) {
+
+//autoselect selectCloudKey based on selected profile
+function selectCloudKey(cloud) {
+    if (cloud == "amazon"){
+        var amzKeyId = $("#chooseEnv").find(":selected").attr('amz_key')
+        if (amzKeyId) {
+            $("#mRunAmzKey").val(parseInt(amzKeyId));
+            $("#mRunAmzKeyS3").val(parseInt(amzKeyId));
+            $("#mArchAmzKeyS3").val(parseInt(amzKeyId));
+            $("#mArchAmzKeyS3_GEO").val(parseInt(amzKeyId));
+            $("#mRunAmzKey").trigger("change");
+            $("#mRunAmzKeyS3").trigger("change");
+            $("#mArchAmzKeyS3").trigger("change");
+            $("#mArchAmzKeyS3_GEO").trigger("change");
+        }  
+    } else if (cloud == "google"){
+        var googKeyId = $("#chooseEnv").find(":selected").attr('goog_key')
+        if (googKeyId) {
+            $("#mRunGoogKey").val(parseInt(googKeyId));
+            $("#mRunGoogKeyGS").val(parseInt(googKeyId));
+            $("#mArchGoogKeyGS").val(parseInt(googKeyId));
+            $("#mArchGoogKeyGS_GEO").val(parseInt(googKeyId));
+            $("#mRunGoogKey").trigger("change");
+            $("#mRunGoogKeyGS").trigger("change");
+            $("#mArchGoogKeyGS").trigger("change");
+            $("#mArchGoogKeyGS_GEO").trigger("change");
+        }  
+    } 
+
+}
+
+function configTextAllProcess(confText, exec_all_settings, type, proName, executor_job) {
     if (type === "each") {
         for (var keyParam in exec_all_settings) {
             if (exec_all_settings[keyParam] !== '' && (keyParam === 'time' || keyParam === 'job_time') && executor_job != "ignite" && executor_job != "local") {
-                window.configTextRaw += 'process.$' + proName + '.time' + ' = \'' + exec_all_settings[keyParam] + 'm\'\n';
+                confText += 'process.$' + proName + '.time' + ' = \'' + exec_all_settings[keyParam] + 'm\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'cpu' || keyParam === 'job_cpu')) {
-                window.configTextRaw += 'process.$' + proName + '.cpus' + ' = ' + exec_all_settings[keyParam] + '\n';
+                confText += 'process.$' + proName + '.cpus' + ' = ' + exec_all_settings[keyParam] + '\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'queue' || keyParam === 'job_queue') && executor_job != "ignite" && executor_job != "local") {
-                window.configTextRaw += 'process.$' + proName + '.queue' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
+                confText += 'process.$' + proName + '.queue' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'memory' || keyParam === 'job_memory')) {
-                window.configTextRaw += 'process.$' + proName + '.memory' + ' = \'' + exec_all_settings[keyParam] + ' GB\'\n';
+                confText += 'process.$' + proName + '.memory' + ' = \'' + exec_all_settings[keyParam] + ' GB\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'opt' || keyParam === 'job_clu_opt') && executor_job != "local") {
-                window.configTextRaw += 'process.$' + proName + '.clusterOptions' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
+                confText += 'process.$' + proName + '.clusterOptions' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
             }
         }
 
     } else {
         for (var keyParam in exec_all_settings) {
             if (exec_all_settings[keyParam] !== '' && (keyParam === 'time' || keyParam === 'job_time') && executor_job != "ignite" && executor_job != "local") {
-                window.configTextRaw += 'process.' + 'time' + ' = \'' + exec_all_settings[keyParam] + 'm\'\n';
+                confText += 'process.' + 'time' + ' = \'' + exec_all_settings[keyParam] + 'm\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'cpu' || keyParam === 'job_cpu')) {
-                window.configTextRaw += 'process.' + 'cpus' + ' = ' + exec_all_settings[keyParam] + '\n';
+                confText += 'process.' + 'cpus' + ' = ' + exec_all_settings[keyParam] + '\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'queue' || keyParam === 'job_queue') && executor_job != "ignite" && executor_job != "local") {
-                window.configTextRaw += 'process.' + 'queue' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
+                confText += 'process.' + 'queue' + ' = \'' + exec_all_settings[keyParam] + '\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'memory' || keyParam === 'job_memory')) {
-                window.configTextRaw += 'process.' + 'memory' + ' = \'' + exec_all_settings[keyParam] + ' GB\'\n';
+                confText += 'process.' + 'memory' + ' = \'' + exec_all_settings[keyParam] + ' GB\'\n';
             } else if (exec_all_settings[keyParam] !== '' && (keyParam === 'opt' || keyParam === 'job_clu_opt') && executor_job != "local") {
-                window.configTextRaw += 'process.' + 'clusterOptions' + ' = \'' + exec_all_settings[keyParam] + ' \'\n';
+                confText += 'process.' + 'clusterOptions' + ' = \'' + exec_all_settings[keyParam] + ' \'\n';
             }
         }
     }
+    return confText
 }
 
 function displayButton(idButton) {
-    var buttonList = ['runProPipe', 'errorProPipe', 'completeProPipe', 'runningProPipe', 'waitingProPipe', 'statusProPipe', 'connectingProPipe', 'terminatedProPipe', "abortedProPipe"];
+    var buttonList = ['runProPipe', 'errorProPipe', 'completeProPipe', 'runningProPipe', 'waitingProPipe', 'statusProPipe', 'connectingProPipe', 'terminatedProPipe', "abortedProPipe", "manualProPipe"];
     for (var i = 0; i < buttonList.length; i++) {
-        document.getElementById(buttonList[i]).style.display = "none";
+        if (document.getElementById(buttonList[i])){
+            document.getElementById(buttonList[i]).style.display = "none";
+        }
     }
-    document.getElementById(idButton).style.display = "inline";
+    if (document.getElementById(idButton)){
+        document.getElementById(idButton).style.display = "inline";
+    }
 }
 //xxxxx
 function terminateProjectPipe() {
@@ -4327,12 +4797,14 @@ function checkRunPid(runPid, proType, proId) {
     return checkPid
 }
 
-function parseMountPath(path) {
+function parseMountPath(path, length) {
     if (path != null && path != "") {
-        if (path.match(/\//)) {
+        if (path.match(/\//) && !path.match(/:/)) {
             var allDir = path.split("/");
-            if (allDir.length > 2) {
-                return "/" + allDir[1] + "/" + allDir[2]
+            if (length == 2 && allDir[1] && allDir[2]) {
+                return "/" + allDir[1] + "/" + allDir[2];
+            } else if (length == 1 && allDir[1]){
+                return "/" + allDir[1];
             }
         }
     }
@@ -4370,11 +4842,10 @@ function removeCollectionFromInputs(col_id){
 }
 
 
-//autofill for ghpcc06 cluster to mount all directories before run executed.
-function autofillMountPath() {
+
+function getPathArray() {
     var pathArray = [];
-    var workDir = $('#rOut_dir').val();
-    workDir = parseMountPath(workDir);
+    var workDir = $runscope.getPubVal("work");
     if (workDir) {
         pathArray.push(workDir);
     }
@@ -4387,23 +4858,19 @@ function autofillMountPath() {
                 var colFiles = getValues({ "id": collection_id, "p": "getCollectionFiles" })
                 for (var i = 0; i < colFiles.length; i++) {
                     if (colFiles[i].file_dir){
-                        if (!colFiles[i].file_dir.match(/s3:/)){
+                        if (!colFiles[i].file_dir.match(/s3:/i) || !colFiles[i].file_dir.match(/gs:/i)){
                             var inputPath = colFiles[i].file_dir;
-                            var parsedPath = parseMountPath(inputPath);
-                            if (parsedPath) {
-                                if (pathArray.indexOf(parsedPath) === -1) {
-                                    pathArray.push(parsedPath)
-                                }
+                            if (pathArray.indexOf(inputPath) === -1) {
+                                pathArray.push(inputPath)
                             }
                         }
                     }
                 }
             } else {
                 var inputPath = $(inputPaths[el]).text();
-                var parsedPath = parseMountPath(inputPath);
-                if (parsedPath) {
-                    if (pathArray.indexOf(parsedPath) === -1) {
-                        pathArray.push(parsedPath)
+                if (inputPath) {
+                    if (pathArray.indexOf(inputPath) === -1) {
+                        pathArray.push(inputPath)
                     }
                 }
             }
@@ -4414,21 +4881,68 @@ function autofillMountPath() {
     if (formPaths && formPaths != null) {
         $.each(formPaths, function (el) {
             var inputPath = $(formPaths[el]).val();
-            var parsedPath = parseMountPath(inputPath);
-            if (parsedPath) {
-                if (pathArray.indexOf(parsedPath) === -1) {
-                    pathArray.push(parsedPath)
+            if (inputPath) {
+                if (pathArray.indexOf(inputPath) === -1) {
+                    pathArray.push(inputPath)
                 }
             }
         });
     }
+    return pathArray
+}
+
+//Autofill runOptions of singularity and docker image
+function autofillMountPathImage(pathArrayL1){
+    console.log(pathArrayL1)
+    var excludePaths = ["/lib", "/opt", "/bin", "/boot", "/dev", "/lib64", "/media", "/proc", "/root", "/sbin", "/srv", "/sys", "/usr", "/var"]
+    // docker.runOptions = -v /export:/export
+    // singularity.runOptions = -B /export:/export
+    var newRunOpt = "";
+    var oldRunOpt = "";
+    var bindParam = "";
+    if (pathArrayL1.length > 0) {
+        if ($('#docker_check').is(":checked") === true) {
+            bindParam = "-v"
+            oldRunOpt = $('#docker_opt').val();
+        } else if ($('#singu_check').is(":checked") === true) {
+            bindParam = "-B"
+            oldRunOpt = $('#singu_opt').val();
+        } 
+        //combine items as /path -> /path:/path
+        newRunOpt = oldRunOpt;
+        for (var k = 0; k < pathArrayL1.length; k++) {
+            if (!oldRunOpt.match(pathArrayL1[k]) && $.inArray(pathArrayL1[k], excludePaths) === -1){
+                newRunOpt += " "+ bindParam+" "+pathArrayL1[k]+":"+pathArrayL1[k]+" " 
+            }
+        }
+        if ($('#docker_check').is(":checked") === true) {
+            $('#docker_opt').val(newRunOpt);
+        } else if ($('#singu_check').is(":checked") === true) {
+            $('#singu_opt').val(newRunOpt);
+        }
+    }
+    return newRunOpt
+}
+
+//autofill for ghpcc06 cluster to mount all directories before run executed.
+function autofillMountPath(pathArray) {
+    var pathArrayL2 = []
+    for (var i = 0; i < pathArray.length; i++) {
+        var length = 2;
+        var parsedPath = parseMountPath(pathArray[i], length);
+        if (parsedPath != null){
+            if (pathArrayL2.indexOf(parsedPath) === -1) {
+                pathArrayL2.push(parsedPath)
+            } 
+        }
+
+    }
     //turn into lsf command (use -E to define scripts which will be executed just before the main job)
-    if (pathArray.length > 0) {
-        var execOtherOpt = '-E "file ' + pathArray.join(' && file ') + '"';
+    if (pathArrayL2.length > 0) {
+        var execOtherOpt = '-E "file ' + pathArrayL2.join(' && file ') + '"';
     } else {
         var execOtherOpt = '';
     }
-
     //check if exec_all or exec_each checkboxes are clicked.
     if ($('#exec_all').is(":checked") === true) {
         var oldExecAll = $('#job_clu_opt').val();
@@ -4453,24 +4967,116 @@ function autofillMountPath() {
     return execOtherOpt
 }
 
+
+function getPathArrayL1(pathArray){
+    var pathArrayL1 = []
+    for (var i = 0; i < pathArray.length; i++) {
+        var length = 1;
+        var parsedPath = parseMountPath(pathArray[i], length);
+        if (parsedPath != null){
+            if (pathArrayL1.indexOf(parsedPath) === -1) {
+                pathArrayL1.push(parsedPath)
+            }
+        }
+    }
+    return pathArrayL1;
+}
+
+//initial run run-options to send with ajax
+function getInitRunOptions(pathArrayL1) {
+    var pathArrayL1Clone = pathArrayL1.slice();
+    //default add /home to initial run binding list if google cloud is used. (credential file is required in the image)
+    var cloudType = $("#chooseEnv").find(":selected").val();
+    var patt = /(.*)-(.*)/;
+    var proType = cloudType.replace(patt, '$1');
+    if (proType == "google" && pathArrayL1Clone.indexOf("/home") === -1) {
+        pathArrayL1Clone.push("/home")
+    }
+
+    var excludePaths = ["/lib", "/opt", "/bin", "/boot", "/dev", "/lib64", "/media", "/proc", "/root", "/sbin", "/srv", "/sys", "/usr", "/var"]
+    // docker.runOptions = -v /export:/export
+    // singularity.runOptions = -B /export:/export
+    var runOptions = "";
+    if (pathArrayL1Clone.length > 0) {
+        //default for initial run
+        var conType = "";
+        var bindParam = "";
+        if ($('#docker_check').is(":checked") === true) {
+            conType = "docker";
+            bindParam = "-v"
+        } else if ($('#singu_check').is(":checked") === true) {
+            conType = "singularity";
+            bindParam = "-B"
+        } else {
+            //singularity is default for initial run
+            conType = "singularity";
+            bindParam = "-B"; 
+        }
+        runOptions += conType+".runOptions='";
+        //combine items as /path -> /path:/path
+        for (var k = 0; k < pathArrayL1Clone.length; k++) {
+            if ($.inArray(pathArrayL1Clone[k], excludePaths) === -1){
+                runOptions += bindParam+" "+pathArrayL1Clone[k]+":"+pathArrayL1Clone[k]+" " 
+            }
+        }
+        runOptions += "'\n";
+    } 
+    return runOptions
+}
+
 //callbackfunction to first change the status of button to connecting
 function runProjectPipe(runProPipeCall, checkType) {
     //reset the checktype
     var keepCheckType = checkType;
-    window['checkType'] = "";
-    execOtherOpt = "";
-    displayButton('connectingProPipe');
-    //create uuid for run
-    var uuid = getValues({ p: "updateRunAttemptLog", project_pipeline_id: project_pipeline_id });
-    fillRunVerOpt(["#runVerLog", "#runVerReport"])
-    $('#runLogArea').val("");
-    //autofill for ghpcc06 cluster to mount all directories before run executed.
-    var hostname = $('#chooseEnv').find('option:selected').attr('host');
-    if (hostname === "ghpcc06.umassrc.org") {
-        execOtherOpt = autofillMountPath()
+    var pathArray = [];
+    var pathArrayL1 = []; //shortened to 1 directory
+    var profileData = [];
+    window.checkType = "";
+    window.execOtherOpt = "";
+    window.sshCheck = false;
+    window.initRunOptions = "";
+    // check ssh key
+    profileData= getJobData("job");
+    if (profileData){
+        if (profileData[0]){
+            if (profileData[0].ssh_id){
+                if (profileData[0].ssh_id != "0"){
+                    window.sshCheck = true;
+                }
+            }
+        }
     }
-    // Call the callback
-    setTimeout(function () { runProPipeCall(keepCheckType, uuid); }, 1000);
+    var manualRunCheck = "false";
+    if (window["manualRun"]){ 
+        if (window["manualRun"] == "true"){
+            manualRunCheck = "true"
+        }
+    }
+    //sshCheck should be true or manualRunModal should be open to initiate run with runProPipeCall
+    if (window.sshCheck || manualRunCheck == "true"){
+        if (manualRunCheck != "true"){
+            displayButton('connectingProPipe');
+        }
+        //create uuid for run
+        var uuid = getValues({ p: "updateRunAttemptLog", project_pipeline_id: project_pipeline_id, manualRun:manualRunCheck });
+        fillRunVerOpt(["#runVerLog", "#runVerReport"])
+        $('#runLogArea').val("");
+        var hostname = $('#chooseEnv').find('option:selected').attr('host');
+        pathArray = getPathArray();
+        //autofill for ghpcc06 cluster to mount all directories before run executed.
+        if (hostname === "ghpcc06.umassrc.org") {
+            execOtherOpt = autofillMountPath(pathArray)
+        }
+        pathArrayL1 = getPathArrayL1(pathArray)
+        //Autofill runOptions of singularity and docker image
+        window["imageRunOpt"] = autofillMountPathImage(pathArrayL1)
+        //initial run run-options to send with ajax
+        window.initRunOptions = getInitRunOptions(pathArrayL1)
+        // Call the callback
+        setTimeout(function () { runProPipeCall(keepCheckType, uuid); }, 1000);
+    } else {
+        $("#manualRunModal").modal("show");
+    }
 }
 
 //click on run button (callback function)
@@ -4481,6 +5087,7 @@ function runProPipeCall(checkType, uuid) {
     nxf_runmode = false;
     var nextText = encodeURIComponent(nextTextRaw);
     var proVarObj = encodeURIComponent(JSON.stringify(window["processVarObj"]))
+    var imageRunOpt = window["imageRunOpt"]; //creates dependency
     var delIntermediate = '';
     var profileTypeId = $('#chooseEnv').find(":selected").val(); //local-32
     var patt = /(.*)-(.*)/;
@@ -4488,61 +5095,22 @@ function runProPipeCall(checkType, uuid) {
     var proId = profileTypeId.replace(patt, '$2');
     proTypeWindow = proType;
     proIdWindow = proId;
-    configTextRaw = '';
+    window.configTextRaw = '';
 
+    var amazon_cre_id = "";
+    var google_cre_id = "";
     //check if s3 path is defined in output or file paths
-    var checkAmzKeysDiv = $("#mRunAmzKeyDiv").css('display');
-    if (checkAmzKeysDiv === "inline") {
-        var amazon_cre_id = $("#mRunAmzKey").val();
-    } else {
-        var amazon_cre_id = "";
-    }
+    if ($("#mRunAmzKeyDiv").css('display') === "inline") {
+        amazon_cre_id = $("#mRunAmzKey").val();
+    } 
+    google_cre_id = $("#mRunGoogKey").val();
     //check if Deletion for intermediate files  is checked
-    if ($('#intermeDel').is(":checked") === true) {
-        configTextRaw += "cleanup = true \n";
-    }
+    //    if ($('#intermeDel').is(":checked") === true) {
+    //        window.configTextRaw  += "cleanup = true \n";
+    //        window.initRunOptions += "cleanup = true \n";
+    //    }
     var [allProSett, profileData] = getJobData("both");
-    if ($('#docker_check').is(":checked") === true) {
-        var docker_img = $('#docker_img').val();
-        var docker_opt = $('#docker_opt').val();
-        configTextRaw += 'process.container = \'' + docker_img + '\'\n';
-        configTextRaw += 'docker.enabled = true\n';
-        if (docker_opt !== '') {
-            configTextRaw += 'docker.runOptions = \'' + docker_opt + '\'\n';
-        }
-    }
-    if ($('#singu_check').is(":checked") === true) {
-        var singu_img = $('#singu_img').val();
-        var patt = /^shub:\/\/(.*)/g;
-        var singuPath = singu_img.replace(patt, '$1');
-        var mntPath = "";
-        if (profileData[0].shared_storage_mnt) {
-            mntPath = profileData[0].shared_storage_mnt;
-        } else {
-            mntPath = "//$HOME";
-        }
-        if (profileData[0].singu_cache) {
-            mntPath = profileData[0].singu_cache;
-        }
-
-        if (patt.test(singu_img)) {
-            singuPath = singuPath.replace(/\//g, '-')
-            var downSingu_img = mntPath + '/.dolphinnext/singularity/' + singuPath + '.simg';
-        } else if (singu_img.match(/http:/) || singu_img.match(/https:/) || singu_img.match(/ftp:/)){
-            var singuPathAr = singuPath.split('/')
-            singuPath = singuPathAr[singuPathAr.length-1]
-            var downSingu_img = mntPath + '/.dolphinnext/singularity/' + singuPath;
-        } else {
-            var downSingu_img = singu_img;
-        }
-
-        var singu_opt = $('#singu_opt').val();
-        configTextRaw += 'process.container = \'' + downSingu_img + '\'\n';
-        configTextRaw += 'singularity.enabled = true\n';
-        if (singu_opt !== '') {
-            configTextRaw += 'singularity.runOptions = \'' + singu_opt + '\'\n';
-        }
-    }
+    var docker_check = $('#docker_check').is(":checked").toString();
     var executor_job = profileData[0].executor_job;
     var executor = profileData[0].executor;
     //if executor is local check cpu and memory fields in profile.
@@ -4551,18 +5119,22 @@ function runProPipeCall(checkType, uuid) {
         var next_memory = profileData[0].next_memory;
         if (next_cpu != null && next_cpu != "" && next_cpu != 0) {
             window.configTextRaw += 'executor.$local.cpus' + ' = ' + next_cpu + '\n';
+            window.initRunOptions += 'executor.$local.cpus' + ' = ' + next_cpu + '\n';
         }
         if (next_memory != null && next_memory != "" && next_memory != 0) {
             window.configTextRaw += 'executor.$local.memory' + ' = \'' + next_memory + ' GB\'\n';
+            window.initRunOptions += 'executor.$local.memory' + ' = \'' + next_memory + ' GB\'\n';
         }
 
     }
-    configTextRaw += 'process.executor = \'' + executor_job + '\'\n';
+    window.configTextRaw += 'process.executor = \'' + executor_job + '\'\n';
+    window.initRunOptions += 'process.executor = \'' + executor_job + '\'\n';
     //all process settings eg. process.queue = 'short'
     if ($('#exec_all').is(":checked") === true) {
         var exec_all_settingsRaw = $('#allProcessSettTable').find('input');
         var exec_all_settings = formToJson(exec_all_settingsRaw);
-        configTextAllProcess(exec_all_settings, "all", "", executor_job);
+        window.configTextRaw = configTextAllProcess(window.configTextRaw, exec_all_settings, "all", "", executor_job);
+        window.initRunOptions = configTextAllProcess(window.initRunOptions, exec_all_settings, "all", "", executor_job);
     } else {
         if (execOtherOpt != "" && execOtherOpt != null) {
             var oldJobCluOpt = allProSett.job_clu_opt;
@@ -4571,7 +5143,8 @@ function runProPipeCall(checkType, uuid) {
                 allProSett.job_clu_opt = newJobCluOpt;
             }
         }
-        configTextAllProcess(allProSett, "all", "", executor_job);
+        window.configTextRaw = configTextAllProcess(window.configTextRaw, allProSett, "all", "", executor_job);
+        window.initRunOptions = configTextAllProcess(window.initRunOptions, allProSett, "all", "", executor_job);
     }
     if ($('#exec_each').is(":checked") === true) {
         var exec_each_settings = decodeURIComponent(formToJsonEachPro());
@@ -4581,12 +5154,21 @@ function runProPipeCall(checkType, uuid) {
                 var each_settings = exec_each_settings[el];
                 var processName = $("#" + el + " :nth-child(2)").text()
                 //process.$hello.queue = 'long'
-                configTextAllProcess(each_settings, "each", processName, executor_job);
+                window.configTextRaw = configTextAllProcess(window.configTextRaw, each_settings, "each", processName, executor_job);
             });
         }
     }
-    console.log(configTextRaw);
-    var configText = encodeURIComponent(configTextRaw);
+    console.log(window["configTextRaw"]);
+    console.log(window["initRunOptions"]);
+    var configText = encodeURIComponent(window["configTextRaw"]);
+    var initRunOptions = encodeURIComponent(window["initRunOptions"]);
+    var manualRunCheck = "false";
+    if (window["manualRun"]){ 
+        if (window["manualRun"] == "true"){
+            manualRunCheck = "true"
+            window["manualRun"] = "false";
+        }
+    }
     //save nextflow text as nextflow.nf and start job
     serverLog = '';
     var serverLogGet = getValues({
@@ -4596,15 +5178,31 @@ function runProPipeCall(checkType, uuid) {
         configText: configText,
         profileType: proType,
         profileId: proId,
+        initRunOptions: initRunOptions,
+        docker_check: docker_check,
+        google_cre_id: google_cre_id,
         amazon_cre_id: amazon_cre_id,
         project_pipeline_id: project_pipeline_id,
         runType: checkType,
+        manualRun: manualRunCheck,
         uuid: uuid
     });
     updateRunVerNavBar()
+    $("#refreshVerReport").trigger("click");
+    if (manualRunCheck == "true"){
+        if (serverLogGet){
+            if (serverLogGet["manualRunCmd"]){
+                $("#manualRunCmd").val(serverLogGet["manualRunCmd"])
+                hideLoadingDiv("manuaRunPanel");
+            }
+        }
+    } 
     $('.nav-tabs a[href="#logTab"]').tab('show');
     readNextflowLogTimer(proType, proId, "default");
+
 }
+
+
 
 //#########read nextflow log file for status  ################################################
 function readNextflowLogTimer(proType, proId, type) {
@@ -4614,7 +5212,7 @@ function readNextflowLogTimer(proType, proId, type) {
     }
     interval_readNextlog = setInterval(function () {
         readNextLog(proType, proId, "no_reload")
-    }, 13000);
+    }, 7000);
     interval_readPubWeb = setInterval(function () {
         readPubWeb(proType, proId, "no_reload")
     }, 60000);
@@ -4645,6 +5243,10 @@ $('a[href="#logTab"]').on('shown.bs.tab', function (e) {
 $('a[href="#reportTab"]').on('shown.bs.tab', function (e) {
     //check if div is empty
     $("#runVerReport").trigger("change");
+});
+
+$(document).on('click', '#errorProPipe', function (e) {
+    $('.nav-tabs a[href="#logTab"]').tab('show');
 });
 
 
@@ -4708,7 +5310,7 @@ function readNextLog(proType, proId, type) {
 
         // check runStatus to get status //Available Run_status States: NextErr,NextSuc,NextRun,Error,Waiting,init,Terminated, Aborted
         // if runStatus equal to  Terminated, NextSuc, Error,NextErr, it means run already stopped. Show the status based on these status.
-        if (runStatus === "Terminated" || runStatus === "NextSuc" || runStatus === "Error" || runStatus === "NextErr") {
+        if (runStatus === "Terminated" || runStatus === "NextSuc" || runStatus === "Error" || runStatus === "NextErr" || runStatus === "Manual") {
             window["countFailRead"]=0;
             if (type !== "reload") {
                 clearIntNextLog(proType, proId);
@@ -4721,6 +5323,16 @@ function readNextLog(proType, proId, type) {
                 displayButton('errorProPipe');
             } else if (runStatus === "Terminated") {
                 displayButton('terminatedProPipe');
+            } else if (runStatus === "Manual") {
+                displayButton('manualProPipe');
+                if (window.serverLog){
+                    if (window["serverLog"].match(/RUN COMMAND:/)){
+                        var serverlogRows = window["serverLog"].split("\n");
+                        if (serverlogRows[1]){
+                            $("#manualRunCmd").val(serverlogRows[1])
+                        }
+                    }
+                }
             }
         }
         // when run hasn't finished yet and page reloads then show connecting button
@@ -4771,7 +5383,7 @@ function readNextLog(proType, proId, type) {
 
 function showOutputPath() {
     var outTableRow = $('#outputsTable > tbody > >:last-child').find('span');
-    var output_dir = $('#rOut_dir').val();
+    var output_dir = $runscope.getPubVal("work");
     //add slash if outputdir not ends with slash
     if (output_dir && output_dir.substr(-1) !== '/') {
         output_dir = output_dir + "/";
@@ -5041,6 +5653,7 @@ function saveRun() {
     var runSummary = encodeURIComponent($('#runSum').val());
     var run_name = $('#run-title').val();
     var newpipelineID = pipeline_id;
+    var onload = ""; //trigger onload function after loading run page
     if (dupliProPipe === false) {
         project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
     } else if (dupliProPipe === true) {
@@ -5050,23 +5663,25 @@ function saveRun() {
         run_name = run_name + '-copy'
         if (confirmNewRev) {
             newpipelineID = highestRevPipeId;
+            onload = "refreshEnv";
         }
     }
-    //checkAmzKeysDiv
-    var checkAmzKeysDiv = $("#mRunAmzKeyDiv").css('display');
-    if (checkAmzKeysDiv === "inline") {
-        var amazon_cre_id = $("#mRunAmzKey").val();
-    } else {
-        var amazon_cre_id = "";
+    //check cloud keys
+    var amazon_cre_id = "";
+    var google_cre_id = "";
+    if ($("#mRunAmzKeyDiv").css('display') === "inline") {
+        amazon_cre_id = $("#mRunAmzKey").val();
     }
-    var output_dir = $.trim($('#rOut_dir').val());
-    var publish_dir = $('#publish_dir').val();
+    google_cre_id = $("#mRunGoogKey").val();
+
+    var output_dir = $runscope.getPubVal("work");
+    var publish_dir = $runscope.getPubVal("publish");
     var publish_dir_check = $('#publish_dir_check').is(":checked").toString();
     var profile = $('#chooseEnv').val();
-    var perms = $('#perms').val();
+    var perms = $('#permsRun').val();
     var interdel = $('#intermeDel').is(":checked").toString();
-    var groupSel = $('#groupSel').val();
-    var cmd = encodeURIComponent($('#runCmd').val());
+    var groupSel = $('#groupSelRun').val();
+    var cmd = encodeURIComponent($runscope.getPubVal("runcmd"));
     var exec_each = $('#exec_each').is(":checked").toString();
     var exec_all = $('#exec_all').is(":checked").toString();
     var exec_all_settingsRaw = $('#allProcessSettTable').find('input');
@@ -5090,6 +5705,7 @@ function saveRun() {
         data.push({ name: "project_id", value: project_id });
         data.push({ name: "pipeline_id", value: newpipelineID });
         data.push({ name: "amazon_cre_id", value: amazon_cre_id });
+        data.push({ name: "google_cre_id", value: google_cre_id });
         data.push({ name: "summary", value: runSummary });
         data.push({ name: "output_dir", value: output_dir });
         data.push({ name: "publish_dir", value: publish_dir });
@@ -5115,6 +5731,7 @@ function saveRun() {
         data.push({ name: "withTimeline", value: withTimeline });
         data.push({ name: "withDag", value: withDag });
         data.push({ name: "process_opt", value: process_opt });
+        data.push({ name: "onload", value: onload });
         data.push({ name: "p", value: "saveProjectPipeline" });
         $.ajax({
             type: "POST",
@@ -5122,7 +5739,16 @@ function saveRun() {
             data: data,
             async: true,
             success: function (s) {
+                console.log(s)
                 if (dupliProPipe === false) {
+                    if (s){
+                        if ($.isArray(s)){
+                            var infoModalText = s.join("</br>");
+                            if (infoModalText){
+                                showInfoModal("#infoModal", "#infoModalText", "Permission of the pipeline needs to be updated in order to share this run. However, it couldn't be changed because of the following reason:</br></br>"+infoModalText)
+                            }
+                        }
+                    }
                     refreshCreatorData(project_pipeline_id);
                     updateSideBarProPipe("", project_pipeline_id, run_name, "edit")
                 } else if (dupliProPipe === true) {
@@ -5142,37 +5768,14 @@ function saveRun() {
 
 function getProfileData(proType, proId) {
     if (proType === 'cluster') {
-        var profileData = getValues({ p: "getProfileCluster", id: proId });
-    } else if (proType === 'amazon') {
-        var profileData = getValues({ p: "getProfileAmazon", id: proId });
-    }
+        var profileData = getValues({ p: "getProfileCluster", id: proId, type:"run" });
+    } else if (proType === 'amazon' || proType === 'google') {
+        var profileData = getValues({ p: "getProfileCloud", cloud:proType, id: proId, type:"run" });
+    } 
     return profileData;
 }
 
-function getJobData(getType) {
-    var chooseEnv = $('#chooseEnv option:selected').val();
-    if (chooseEnv) {
-        var patt = /(.*)-(.*)/;
-        var proType = chooseEnv.replace(patt, '$1');
-        var proId = chooseEnv.replace(patt, '$2');
-        var profileData = getProfileData(proType, proId);
-        var allProSett = {};
-        if (profileData && profileData != '') {
-            allProSett.job_queue = profileData[0].job_queue;
-            allProSett.job_memory = profileData[0].job_memory;
-            allProSett.job_cpu = profileData[0].job_cpu;
-            allProSett.job_time = profileData[0].job_time;
-            allProSett.job_clu_opt = profileData[0].job_clu_opt;
-            if (getType === "job") {
-                return profileData;
-            } else if (getType === "both") {
-                return [allProSett, profileData];
-            }
-        } else {
-            return [allProSett, profileData];
-        }
-    }
-}
+
 
 function updateSideBarProPipe(project_id, project_pipeline_id, project_pipeline_name, type) {
     if (type === "edit") {
@@ -5246,7 +5849,7 @@ function duplicateProPipe(type) {
         if (askNewRev === true) {
             $('#duplicateKeepBtn').css("display","inline-block");
             $('#duplicateNewBtn').css("display","inline-block");
-            $("#confirmDuplicateText").text('New revision of this pipeline is available. If you want to create a new run and keep your revision of pipeline, please click "Keep Existing Revision" button. If you wish to use same input parameters in new revision of pipeline then click "Use New Revision" button.');
+            $("#confirmDuplicateText").html('New revision of this pipeline is available. If you want to create a new run and keep your revision of pipeline, please click "Keep Existing Revision" button. If you wish to use same input parameters in new revision of pipeline then click "Use New Revision" button.</br></br><b style="color:blue;">* Caution:</b> If you choose "Use New Revision", you might need to re-enter your custom pipeline options.');
         } else {
             $('#copyRunBut').css("display","inline-block");
             $("#confirmDuplicateText").text('Please select target project to copy your run.');
@@ -5461,6 +6064,8 @@ function updateRunVerNavBar() {
     }
 }
 
+
+
 //use array of item to fill select element
 function fillArray2Select(arr, id, clean) {
     if (clean === true) {
@@ -5472,6 +6077,132 @@ function fillArray2Select(arr, id, clean) {
         $(id).append(optionGroup);
     }
 }
+
+function resetPatternList() {
+    fillArray2Select([], "#singleList", true)
+    fillArray2Select([], "#reverseList", true)
+    fillArray2Select([], "#forwardList", true)
+}
+
+
+function viewDirButSearch(dir){
+    var amazon_cre_id = "";
+    var google_cre_id = "";
+    var warnUser = false;
+    if (dir) {
+        if (dir.match(/:\/\//)){
+            var lastChr1 = dir.slice(-1);
+            var lastChr2 = dir.slice(-2);
+            if (lastChr1 == "/" && lastChr2 != "//"){
+                dir = dir.substring(0, dir.length - 1);
+            }  
+        }
+        console.log(dir)
+        if (dir.match(/s3:/i)){
+            amazon_cre_id = $('#mRunAmzKeyS3').val()
+            if (!amazon_cre_id){
+                showInfoModal("#infoModal", "#infoModalText", "Please select Amazon Keys to search files in your S3 storage.");
+                warnUser = true;
+            } 
+        } else if (dir.match(/gs:/i)){
+            google_cre_id = $('#mRunGoogKeyGS').val()
+            if (!google_cre_id){
+                showInfoModal("#infoModal", "#infoModalText", "Please select Google Keys to search files in your Google storage.");
+                warnUser = true;
+            } 
+        } 
+        if (!warnUser){
+            var dirList = getValues({ "p": "getLsDir", dir: dir, profileType: proTypeWindow, profileId: proIdWindow, amazon_cre_id:amazon_cre_id, google_cre_id:google_cre_id,  project_pipeline_id:project_pipeline_id });
+            if (dirList) {
+                dirList = $.trim(dirList)
+                console.log(dirList)
+                var fileArr = [];
+                var errorAr = [];
+                if (dir.match(/s3:/i) || dir.match(/gs:/i)){
+                    var raw = dirList.split('\n');
+                    for (var i = 0; i < raw.length; i++) {
+                        var filePath = raw[i].split(" ").pop();
+                        if (filePath){
+                            if (filePath.toLowerCase() === dir.toLowerCase() || filePath.toLowerCase() === dir.toLowerCase()+"/"){
+                                console.log("skip", filePath)
+                                continue;
+                            }
+                            if (filePath.match(/s3:/i) || filePath.match(/gs:/i)) {
+                                var allBlock = filePath.split("/");
+                                if (filePath.substr(-1) == "/"){
+                                    var lastBlock = allBlock[allBlock.length-2];
+                                } else {
+                                    var lastBlock = allBlock[allBlock.length-1];
+                                }
+                                fileArr.push(lastBlock)
+                            } else {
+                                errorAr.push(raw[i])
+                            }
+                        } else {
+                            errorAr.push(raw[i])
+                        }
+                    }
+                } else if (dir.match(/:\/\//)){
+                    fileArr = dirList.split('\n');
+                    errorAr = fileArr.filter(line => line.match(/:/));
+                    fileArr = fileArr.filter(line => !line.match(/:/));
+                } else {
+                    fileArr = dirList.split('\n');
+                    errorAr = fileArr.filter(line => line.match(/ls:/));
+                    fileArr = fileArr.filter(line => !line.match(/:/));
+                }
+                console.log(fileArr)
+                console.log(errorAr)
+                if (fileArr.length > 0) {
+                    var copiedList = fileArr.slice(); 
+                    copiedList.unshift("..")
+                    fillArray2Select(copiedList, "#viewDir", true)
+                    $("#viewDir").data("fileArr", fileArr)
+                    $("#viewDir").data("fileDir", dir)
+                    var amzKey = ""
+                    var googKey = ""
+                    if (dir.match(/s3:/i)){ amzKey= $("#mRunAmzKeyS3").val(); }
+                    if (dir.match(/gs:/i)){ googKey= $("#mRunGoogKeyGS").val(); }
+                    $("#viewDir").data("amzKey", amzKey);
+                    $("#viewDir").data("googKey", googKey);
+                    $('#collection_type').trigger("change");
+                } else {
+                    if (errorAr.length > 0) {
+                        var errTxt = errorAr.join(' ')
+                        showInfoModal("#infoModal", "#infoModalText", errTxt)
+                        resetPatternList()
+                    } else {
+                        fillArray2Select(["Files Not Found."], "#viewDir", true)
+                        resetPatternList()
+                    }
+                }
+            } else {
+                fillArray2Select(["Files Not Found."], "#viewDir", true)
+                resetPatternList()
+            }
+        } else {
+            fillArray2Select(["Files Not Found."], "#viewDir", true)
+            resetPatternList()
+        }
+        $("#viewDir").css("display", "inline")
+        $("#viewDirDiv").css("display", "block")
+    } else {
+        showInfoModal("#infoModal", "#infoModalText", "Please enter 'File Location' to search files.")
+    }
+}
+
+function fillFileSearchBox(item, targetDiv){
+    if ($(item)){
+        var val = $(item).text()
+        if (val){
+            $('#'+targetDiv).val(val)
+            $('#'+targetDiv).keyup();
+        }
+    }
+}
+
+
+
 
 $(document).ready(function () {
     project_pipeline_id = $('#pipeline-title').attr('projectpipelineid');
@@ -5491,47 +6222,7 @@ $(document).ready(function () {
         $('#pipeRunDiv').remove();
         $("#run-title").prop("disabled", true);
     }
-    ///fixCollapseMenu checkboxes
-    fixCollapseMenu('#allProcessDiv', '#exec_all');
-    fixCollapseMenu('#eachProcessDiv', '#exec_each');
-    fixCollapseMenu('#publishDirDiv', '#publish_dir_check');
-    //not allow to check both docker and singularity
-    $('#docker_imgDiv').on('show.bs.collapse', function () {
-        if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
-            $('#singu_check').trigger("click");
-        }
-        $('#docker_check').attr('onclick', "return false;");
-    });
-    $('#singu_imgDiv').on('show.bs.collapse', function () {
-        if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
-            $('#docker_check').trigger("click");
-        }
-        $('#singu_check').attr('onclick', "return false;");
-    });
-    $('#docker_imgDiv').on('shown.bs.collapse', function () {
-        if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
-            $('#singu_check').trigger("click");
-        }
-        $('#docker_check').removeAttr('onclick');
-    });
-    $('#singu_imgDiv').on('shown.bs.collapse', function () {
-        if ($('#singu_check').is(":checked") && $('#docker_check').is(":checked")) {
-            $('#docker_check').trigger("click");
-        }
-        $('#singu_check').removeAttr('onclick');
-    });
-    $('#singu_imgDiv').on('hide.bs.collapse', function () {
-        $('#singu_check').attr('onclick', "return false;");
-    });
-    $('#docker_imgDiv').on('hide.bs.collapse', function () {
-        $('#docker_check').attr('onclick', "return false;");
-    });
-    $('#docker_imgDiv').on('hidden.bs.collapse', function () {
-        $('#docker_check').removeAttr('onclick');
-    });
-    $('#singu_imgDiv').on('hidden.bs.collapse', function () {
-        $('#singu_check').removeAttr('onclick');
-    });
+
 
     //runStatus
     runStatus = "";
@@ -5660,6 +6351,11 @@ $(document).ready(function () {
             $('body').css('position', 'static');
         })
 
+
+
+
+
+
         $('#inputFilemodal').on('click', '#addSample', function (event) {
             event.preventDefault();
             if (proTypeWindow && proIdWindow) {
@@ -5676,23 +6372,29 @@ $(document).ready(function () {
             $("#viewDir").removeData("fileArr");
             $("#viewDir").removeData("fileDir");
             $("#viewDir").removeData("amzKey");
+            $("#viewDir").removeData("googKey");
             fillArray2Select([], "#viewDir", true)
             resetPatternList()
             clearSelection()
             selectedGeoSamplesTable.fnClearTable();
             searchedGeoSamplesTable.fnClearTable();
-            selectAmzKey()
+            selectCloudKey("amazon")
+            selectCloudKey("google")
             $('.forwardpatternDiv').css("display", "none")
             $('.reversepatternDiv').css("display", "none")
             $('.singlepatternDiv').css("display", "none")
             $('.patternButs').css("display", "none")
             $('.patternTable').css("display", "none")
-            $("#viewDir").css("display", "none")
+            $("#viewDir").css("display", "none");
+            $("#viewDirDiv").css("display", "none");
+            $("#viewDir > option").attr("style", "pointer-events: auto;");
             $("#seaGeoSamplesDiv").css("display", "none")
             $("#selGeoSamplesDiv").css("display", "none")
             $('#mRunAmzKeyS3Div').css("display", "none")
             $('#mArchAmzKeyS3Div_GEO').css("display", "none")
             $('#mArchAmzKeyS3Div').css("display", "none")
+            $('#file_dir_div').css("display","block");
+            $('#viewDirInfo').css("display","block");
             var renderMenu = {
                 option: function (data, escape) {
                     return '<div class="option">' +
@@ -5718,104 +6420,41 @@ $(document).ready(function () {
                 $(selectizeIDs[i])[0].selectize.clear()
             }
             //#uploadFiles tab:
-            var workDir = $("#rOut_dir").val();
-            if (workDir){
-                $("#target_dir").val(workDir+"/run"+project_pipeline_id+"/upload")
-            }
+            $("#target_dir").val($runscope.getUploadDir("new"));
         });
+
+
 
         $('#viewDirBut').click(function () {
             var dir = $('#file_dir').val();
-            var amazon_cre_id = "";
-            var warnUser = false;
-            if (dir) {
-                if (dir.match(/s3:/)){
-                    var lastChr = dir.slice(-1);
-                    if (lastChr == "/"){
-                        dir = dir.substring(0, dir.length - 1);
-                    }
-                    amazon_cre_id = $('#mRunAmzKeyS3').val()
-                    if (!amazon_cre_id){
-                        showInfoModal("#infoModal", "#infoModalText", "Please select Amazon Keys to search files in your S3 storage.");
-                        warnUser = true;
-                    } 
-                } else if (dir.match(/:\/\//)){
-                    var lastChr = dir.slice(-1);
-                    if (lastChr == "/"){
-                        dir = dir.substring(0, dir.length - 1);
-                    }  
-                }
-                if (!warnUser){
-                    var dirList = getValues({ "p": "getLsDir", dir: dir, profileType: proTypeWindow, profileId: proIdWindow, amazon_cre_id:amazon_cre_id });
-                    if (dirList) {
-                        dirList = $.trim(dirList)
-                        console.log(dirList)
-                        var fileArr = [];
-                        var errorAr = [];
-                        if (dir.match(/s3:/)){
-                            var raw = dirList.split('\n');
-                            for (var i = 0; i < raw.length; i++) {
-                                var filePath = raw[i].split(" ").pop();
-                                if (filePath){
-                                    if (filePath.match(/s3:/)){
-                                        var allBlock = filePath.split("/");
-                                        if (filePath.substr(-1) == "/"){
-                                            var lastBlock = allBlock[allBlock.length-2]
-                                            } else {
-                                                var lastBlock = allBlock[allBlock.length-1]
-                                                }
-                                        fileArr.push(lastBlock)
-                                    } else {
-                                        errorAr.push(raw[i])
-                                    }
-                                } else {
-                                    errorAr.push(raw[i])
-                                }
-                            }
-                        } else if (dir.match(/:\/\//)){
-                            fileArr = dirList.split('\n');
-                            errorAr = fileArr.filter(line => line.match(/:/));
-                            fileArr = fileArr.filter(line => !line.match(/:/));
-                        } else {
-                            fileArr = dirList.split('\n');
-                            errorAr = fileArr.filter(line => line.match(/ls:/));
-                            fileArr = fileArr.filter(line => !line.match(/:/));
-                        }
-                        console.log(fileArr)
-                        console.log(errorAr)
-                        if (fileArr.length > 0) {
-                            fillArray2Select(fileArr, "#viewDir", true)
-                            $("#viewDir").data("fileArr", fileArr)
-                            $("#viewDir").data("fileDir", dir)
-                            var amzKey = ""
-                            if (dir.match(/s3:/i)){
-                                amzKey= $("#mRunAmzKeyS3").val()
-                            }
-                            $("#viewDir").data("amzKey", amzKey)
+            viewDirButSearch(dir)
+        });
 
-                            $('#collection_type').trigger("change");
-                        } else {
-                            if (errorAr.length > 0) {
-                                var errTxt = errorAr.join(' ')
-                                showInfoModal("#infoModal", "#infoModalText", errTxt)
-                                resetPatternList()
-                            } else {
-                                fillArray2Select(["Files Not Found."], "#viewDir", true)
-                                resetPatternList()
-                            }
-                        }
-                    } else {
-                        fillArray2Select(["Files Not Found."], "#viewDir", true)
-                        resetPatternList()
-                    }
-                } else {
-                    fillArray2Select(["Files Not Found."], "#viewDir", true)
-                    resetPatternList()
-                }
-                $("#viewDir > option").attr("style", "pointer-events: none;");
-                $("#viewDir").css("display", "inline")
+        $('#addFileModal').on("dblclick", '#viewDir option', function() {
+            var selectedOpt = $(this).val();
+            var olddir = $('#file_dir').val();
+            var newdir = "";
+            if (selectedOpt == ".."){
+                var split = olddir.split("/")
+                //if ends with /    
+                if (olddir.slice(-1) == "/"){
+                    var finalPart = split[split.length - 2];
+                    newdir = olddir.substring(0, olddir.indexOf(finalPart));
+                } else{
+                    var finalPart = split[split.length - 1];
+                    newdir = olddir.substring(0, olddir.indexOf(finalPart));
+                }    
             } else {
-                showInfoModal("#infoModal", "#infoModalText", "Please enter 'File Directory' to search files in your host.")
+                if (olddir.slice(-1) == "/"){
+                    newdir = olddir + selectedOpt;
+                } else{
+                    newdir = olddir + "/"+ selectedOpt;
+                }
+
+            }
+            if (newdir){
+                $('#file_dir').val(newdir);
+                viewDirButSearch(newdir); 
             }
         });
 
@@ -5855,70 +6494,503 @@ $(document).ready(function () {
             }
         }
 
-        $('#viewGeoBut').click(function () {
-            var geo_id = $('#geo_id').val()
-            if (geo_id) {
-                var geoList = "";
-                $.ajax({
-                    type: "POST",
-                    url: "ajax/ajaxquery.php",
-                    data: { p: 'getGeoData', geo_id: geo_id },
-                    beforeSend: function () { showLoadingDiv("viewGeoButDiv"); },
-                    complete: function () {
+        //--GEO SEARCH STARTS--
+        $(function () {
+            function showGEOErrorModal(duplicateList, geoFailedList) {
+                //true if modal is open
+                $("#errGeoModal").off();
+                $("#errGeoModal").on('show.bs.modal', function (event) {
+                    $(this).find('form').trigger('reset');
+                    var dup_text = "";
+                    var dup_list = duplicateList.join(" ");
+                    var err_text = "";
+                    var err_list = geoFailedList.join(" ");
+                    if (duplicateList.length > 0){
+                        $("#errGeoModalDupDiv").css("display","block");
+                        $("#errGeoModalDupText").html("Following geo terms already added into table.");
+                        $("#errGeoModalDupList").val(dup_list);
+                    } else {
+                        $("#errGeoModalDupDiv").css("display","none");
+                    }
+                    if (geoFailedList.length > 0){
+                        $("#errGeoModalErrDiv").css("display","block");
+                        $("#errGeoModalErrText").html("Following " + geoFailedList.length +" geo terms could not be loaded because of a connection error. If you want to skip these items, please click 'ok' button, otherwise click 'retry' button to search missing items again.");
+                        $("#errGeoModalErrList").removeData();
+                        $("#errGeoModalErrList").val(err_list);
+                        $("#errGeoModalErrList").data("geoFailedList", geoFailedList);
+                        $("#retry_geo_search").css("display","inline");
+                    } else {
+                        $("#errGeoModalErrDiv").css("display","none");
+                        $("#retry_geo_search").css("display","none");
+                    }
+                });
+
+                $("#errGeoModal").on('click', "#retry_geo_search", function (event) {
+                    var geoFailList = $("#errGeoModalErrList").data("geoFailedList");
+                    $("#errGeoModalErrList").removeData();
+                    console.log(geoFailList)
+                    var geoList = [];
+                    var geoFailedList = [];
+                    $('#viewGeoBut').data("searchList", geoFailList);
+                    $('#viewGeoBut').data("searchIndex", 0);
+                    $('#viewGeoBut').data("searchType", "retry");
+                    $('#viewGeoBut').data("retryFailed", 2); //retry amount in case some queries fails
+                    showLoadingDivText("viewGeoButDiv","")
+                    initGEOsearch(geoList, geoFailedList);
+                });
+                $("#errGeoModal").modal('show'); 
+
+            }
+
+            //check waitingList obj to find "waiting" calls
+            var checkWaitingList= function(geoList, geoFailedList, count){
+                count++
+                var waitingList = $('#viewGeoBut').data("waitingList")
+                var check = true;
+                $.each(waitingList, function (el) {
+                    if (waitingList[el] == "waiting"){
+                        check = false;
+                    }
+                })
+                if (check || count>20){
+                    onCompleteCall(geoList, geoFailedList)
+                } else {
+                    setTimeout( function () { 
+                        console.log("wait for remaining queries")
+                        checkWaitingList(geoList, geoFailedList, count)
+                    }, 1000)
+                }
+            }
+
+            var onCompleteCall = function(geoList, geoFailedListRaw){
+                var geoFailedList = geoFailedListRaw.filter(function(elem, index, self) {
+                    return index === self.indexOf(elem);
+                })
+                console.log(geoList)
+                console.log(geoFailedList)
+                var searchList = $('#viewGeoBut').data("searchList");
+                var searchIndex = $('#viewGeoBut').data("searchIndex");
+                var searchType = $('#viewGeoBut').data("searchType");
+                var retryFailed = $('#viewGeoBut').data("retryFailed");
+                if (!retryFailed){
+                    retryFailed = 0;
+                }
+
+                searchIndex ++;
+                $('#viewGeoBut').data("searchIndex", searchIndex);
+                if (typeof searchList === 'undefined') { return;}
+                if (typeof searchIndex === 'undefined') { return;}
+                if (searchList[searchIndex]){
+                    if (searchType == "retry"){
+                        var percent = Math.floor(100*searchIndex/(searchList.length));
+                        if (percent <100){
+                            showLoadingDivText("viewGeoButDiv",percent+"%")
+                        } 
+                    }
+                    initGEOsearch(geoList, geoFailedList);
+                } else {
+                    if (geoFailedList.length >0 && retryFailed>0){
+                        retryFailed--;
+                        console.log("retryFailed",retryFailed)
+                        $('#viewGeoBut').data("retryFailed", retryFailed);
+                        $('#viewGeoBut').data("searchList", geoFailedList);
+                        $('#viewGeoBut').data("searchIndex", 0);
+                        $('#viewGeoBut').data("searchType", "retry");
+                        showLoadingDivText("viewGeoButDiv","")
+                        var geoFailedList=[]
+                        initGEOsearch(geoList, geoFailedList);
+                    } else{
+                        //oncomplete:
+                        $('#viewGeoBut').removeData("searchList");
+                        $('#viewGeoBut').removeData("searchIndex");
                         $("#seaGeoSamplesDiv").css("display", "block");
                         hideLoadingDiv("viewGeoButDiv");
-                    },
-                    async: true,
-                    success: function (geoList) {
-                        if (!geoList) {
-                            showInfoModal("#infoModal", "#infoModalText", "There was an error in your GEO query. Search term " + geo_id + " cannot be found")
-                        } else if (geoList.length == 0) {
-                            showInfoModal("#infoModal", "#infoModalText", "There was an error in your GEO query. Search term " + geo_id + " cannot be found")
-                        } else if (geoList.length == 1 && $.isEmptyObject(geoList[0])) {
-                            showInfoModal("#infoModal", "#infoModalText", "There was an error in your GEO query. Search term " + geo_id + " cannot be found")
-                        } else {
-                            var errCount = 0;
-                            if (geoList.length) {
-                                for (var i = 0; i < geoList.length; i++) {
-                                    if (geoList[i].srr_id && geoList[i].collection_type) {
-                                        var name = geoList[i].srr_id;
-                                        if (geoList[i].name) {
-                                            name = geoList[i].name;
-                                        }
-                                        var srr_id = geoList[i].srr_id;
-                                        var collection_type = geoList[i].collection_type;
-                                        if (collection_type == "single") {
-                                            collection_type = "Single";
-                                        } else if (collection_type == "pair") {
-                                            collection_type = "Paired";
-                                        }
-                                        var select_button = '<button class="btn btn-primary pull-right" type= "button" id="' + srr_id + '_select" onclick="selectSRA(\'' + name + '\',\'' + srr_id + '\', \'' + collection_type + '\', this)">Select</button>';
-                                        //check table data before adding.
-                                        var selected_data = selectedGeoSamplesTable.fnGetData();
-                                        var checkSelectedUniqueData = selected_data.filter(function (el) { return el[1] == srr_id });
-                                        var table_data = searchedGeoSamplesTable.fnGetData();
-                                        var checkTableUniqueData = table_data.filter(function (el) { return el[1] == srr_id });
-                                        if (checkTableUniqueData.length == 0 && checkSelectedUniqueData.length == 0) {
-                                            searchedGeoSamplesTable.fnAddData([name, srr_id, collection_type, select_button]);
-                                        } else {
-                                            if (errCount < 1) {
-                                                showInfoModal("#infoModal", "#infoModalText", "Search term " + srr_id + " already added into table.")
-                                            } else {
-                                                var oldtext = $("#infoModalText").html();
-                                                $("#infoModalText").html(oldtext + "</br>" + "Search term " + srr_id + " already added into table.");
-                                            }
-                                            errCount += 1
-                                        }
+                        //fill the table based on geoList
+                        var duplicateList = [];
+                        if (geoList.length) {
+                            for (var i = 0; i < geoList.length; i++) {
+                                if (geoList[i].srr_id && geoList[i].collection_type) {
+                                    var name = geoList[i].srr_id;
+                                    if (geoList[i].name) {
+                                        name = geoList[i].name;
+                                    }
+                                    var srr_id = geoList[i].srr_id;
+                                    var collection_type = geoList[i].collection_type;
+                                    if (collection_type == "single") {
+                                        collection_type = "Single";
+                                    } else if (collection_type == "pair") {
+                                        collection_type = "Paired";
+                                    }
+                                    var select_button = '<button class="btn btn-primary pull-right" type= "button" id="' + srr_id + '_select" onclick="selectSRA(\'' + name + '\',\'' + srr_id + '\', \'' + collection_type + '\', this)">Select</button>';
+                                    //check table data before adding.
+                                    var selected_data = selectedGeoSamplesTable.fnGetData();
+                                    var checkSelectedUniqueData = selected_data.filter(function (el) { return el[1] == srr_id });
+                                    var table_data = searchedGeoSamplesTable.fnGetData();
+                                    var checkTableUniqueData = table_data.filter(function (el) { return el[1] == srr_id });
+                                    if (checkTableUniqueData.length == 0 && checkSelectedUniqueData.length == 0) {
+                                        searchedGeoSamplesTable.fnAddData([name, srr_id, collection_type, select_button]);
+                                    } else {
+                                        duplicateList.push(srr_id)
                                     }
                                 }
                             }
                         }
+
+                        if (geoList.length == 0 && geoFailedList.length == 0) {
+                            showInfoModal("#infoModal", "#infoModalText", "There was an error in your GEO query. Search term cannot be found")
+                        } else if (duplicateList.length > 0 || geoFailedList.length > 0){
+                            showGEOErrorModal(duplicateList, geoFailedList);
+                        }
                     }
-                });
+
+                }
 
             }
-        });
+            var sraQuery = function(sraQueryList, sraQueInd, retstart, retmax, geoList, geoFailedList, queryDB, callback){
+                var startTime = new Date();
+                //execute nextQuery only once
+                var nextQuery = (function() {
+                    var executed = false;
+                    return function() {
+                        if (!executed) {
+                            executed = true;
+                            if (sraQueryList.length-1 > sraQueInd){
+                                var newSraQueInd = sraQueInd+1; 
+                                console.log("sraQuery "+(newSraQueInd+1)+"/"+sraQueryList.length,sraQueryList[newSraQueInd])
+                                var percent = Math.floor(100*newSraQueInd/(sraQueryList.length)); 
+                                showLoadingDivText("viewGeoButDiv",percent+"%");
+                                var endTime = new Date();
+                                var timeDiff = endTime - startTime; //in ms
+                                //3 query in 1000ms allowed by ncbi 
+                                var wait = 1000 - timeDiff
+                                if (wait < 1){
+                                    wait = 0;
+                                }
+                                setTimeout( function () { 
+                                    sraQuery(sraQueryList, newSraQueInd, retstart, retmax, geoList, geoFailedList, queryDB, callback);
+                                }, wait)
+                            }
+                        }
+                    };
+                })();
 
+                //execute endFunc only once
+                var endFunc = (function() {
+                    var executed = false;
+                    return function() {
+                        if (!executed) {
+                            executed = true;
+                            if (typeof callback === "function") {
+                                callback(geoList)
+                                //gds query
+                            } else {
+                                if (sraQueryList.length-1 == sraQueInd){
+                                    checkWaitingList(geoList, geoFailedList, 0) 
+                                } else if (sraQueryList.length-1 > sraQueInd){
+                                    nextQuery()
+                                }  
+                            }
+                        }
+                    };
+                })();
+
+                var geo_id = sraQueryList[sraQueInd];
+                var searchURL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&usehistory=y&retmode=json&term='+geo_id;
+                var succCheck1 = false;
+                $.ajax({
+                    crossOrigin: true,
+                    proxy: "ajax/proxy.php",
+                    url: searchURL,
+                    context: {},
+                    error: function (jqXHR, exception) {
+                        reportAjaxError(jqXHR, exception, searchURL)
+                    },
+                    success: function(jsonText) {
+                        console.log(geo_id)
+                        var deferreds = [];
+                        var deferredsRes = [];
+                        var deferredsData = [];
+                        if (IsJsonString(jsonText)) {
+                            var res = JSON.parse(jsonText)
+                            console.log(res)
+                            if (res){
+                                if (res.esearchresult){
+                                    if (res.esearchresult.webenv && res.esearchresult.querykey){
+                                        var webenv = res.esearchresult.webenv;
+                                        var querykey = res.esearchresult.querykey;
+                                        var resultsURL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=sra&retmode=json&query_key='+querykey+'&WebEnv='+webenv+'&retstart='+retstart+'&retmax='+retmax;
+                                        console.log(resultsURL)
+                                        succCheck1 = true;
+                                        var succCheck2 = false;
+                                        $.ajax({
+                                            crossOrigin: true,
+                                            proxy: "ajax/proxy.php",
+                                            url: resultsURL,
+                                            context: {},
+                                            error: function (jqXHR, exception) {
+                                                reportAjaxError(jqXHR, exception, resultsURL)
+                                            },
+                                            success: function(jsonText2) {
+                                                nextQuery()
+                                                if (IsJsonString(jsonText2)) {
+                                                    var res2 = JSON.parse(jsonText2)
+                                                    console.log(res2)
+                                                    if (res2){
+                                                        if (res2.result){
+                                                            var res2_res =res2.result
+                                                            var k = 0
+                                                            var ajaxcount = 0
+                                                            $.each(res2_res, function (el) {
+                                                                if (res2_res[el]["expxml"]){
+                                                                    var expJSON = xmlStringToJson(res2_res[el]["expxml"]);
+                                                                    var runsJSON = xmlStringToJson(res2_res[el]["runs"]);
+                                                                    if (expJSON.Summary && runsJSON.Run){
+                                                                        // If only one SRR, make it an array
+                                                                        if(!$.isArray(runsJSON.Run)){
+                                                                            runsJSON.Run = [runsJSON.Run];
+                                                                        }
+                                                                        for(var i = 0; i < runsJSON.Run.length; i++){
+                                                                            console.log(expJSON.Summary.Title)
+                                                                            console.log(runsJSON.Run[i].attributes)
+                                                                            if (expJSON.Summary.Title && runsJSON.Run[i].attributes){
+                                                                                if (expJSON.Summary.Title.text && runsJSON.Run[i].attributes.acc){
+                                                                                    var srr_id = runsJSON.Run[i].attributes.acc
+                                                                                    var sra_clean = expJSON.Summary.Title.text.replace(/[^a-z0-9\._\-]/gi, '_').replace(/_+/g, '_');
+                                                                                    console.log(srr_id)
+                                                                                    if (srr_id.match(/SRR/i)){
+                                                                                        k++
+                                                                                        var searchENAUrl = 'https://www.ebi.ac.uk/ena/data/warehouse/filereport?result=read_run&fields=fastq_ftp&accession='+srr_id;
+                                                                                        var collectionType =""
+                                                                                        deferredsData.push({srr_id: srr_id,name: sra_clean})
+                                                                                        var waitingList = $('#viewGeoBut').data("waitingList")
+                                                                                        if (!waitingList){
+                                                                                            waitingList={};
+                                                                                        } 
+                                                                                        waitingList[srr_id] = "waiting";
+                                                                                        $('#viewGeoBut').data("waitingList", waitingList);
+
+                                                                                        succCheck2 = true;
+                                                                                        deferreds.push(
+                                                                                            $.ajax({
+                                                                                                url: searchENAUrl,
+                                                                                                async: true,
+                                                                                                complete: function(){
+                                                                                                    ajaxcount++
+                                                                                                    if (queryDB == "sra"){
+                                                                                                        var percent = Math.floor(100*ajaxcount/(k));
+                                                                                                        if (percent <100){
+                                                                                                            showLoadingDivText("viewGeoButDiv",percent+"%")
+                                                                                                        }
+                                                                                                    }
+                                                                                                },
+                                                                                                type: "GET",
+                                                                                                success: function (res) {
+                                                                                                    deferredsRes.push(res)
+                                                                                                },
+                                                                                                error: function (jqXHR, exception) {
+                                                                                                    if (typeof callback !== "function") {
+                                                                                                        console.log("FAILED:"+geo_id)
+                                                                                                        geoFailedList.push(geo_id)
+                                                                                                    }
+                                                                                                    reportAjaxError(jqXHR, exception, searchENAUrl)
+                                                                                                }
+                                                                                            })
+                                                                                        )
+                                                                                    }    
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                                //wait for all async calls to finish
+                                                $.when.apply($, deferreds).always(function(){
+                                                    for (var i = 0; i < deferredsRes.length; i++) {
+                                                        var succCheck3 = false;
+                                                        var collectionType = ""
+                                                        if (deferredsRes[i]){
+                                                            var lines = deferredsRes[i].split("\n")
+                                                            if (lines.length >1){
+                                                                if (lines[0].match(/fastq_ftp/i) && lines[1].match(/fastq/i)){
+                                                                    if (lines[1].match(/;/)){
+                                                                        collectionType = "pair";
+                                                                    } else {
+                                                                        collectionType = "single";
+                                                                    }
+                                                                    if (collectionType){
+                                                                        succCheck3 = true;
+                                                                        var waitingList = $('#viewGeoBut').data("waitingList")
+                                                                        if (waitingList){
+                                                                            waitingList[deferredsData[i].srr_id] = "done";
+                                                                        }
+                                                                        $('#viewGeoBut').data("waitingList", waitingList);
+                                                                        geoList.push({
+                                                                            srr_id: deferredsData[i].srr_id,
+                                                                            collection_type: collectionType,
+                                                                            name: deferredsData[i].name
+                                                                        }) 
+                                                                    }
+
+                                                                }
+                                                            }
+                                                        }
+                                                        if (!succCheck3){
+                                                            if (typeof callback !== "function") {
+                                                                geoFailedList.push(deferredsData[i].srr_id)
+                                                            }
+                                                        }
+                                                    }
+                                                    if (deferredsRes.length <1) {
+                                                        if (typeof callback !== "function") {
+                                                            if (!geo_id.match("GPL") && !geo_id.match("GSE")){
+                                                                geoFailedList.push(geo_id)
+                                                            }
+                                                        }
+                                                    }
+                                                    console.log("endcheck1:"+geo_id)
+                                                    endFunc(callback,geoList,geoFailedList)
+                                                });
+                                                if (succCheck1 && !succCheck2){
+                                                    if (typeof callback !== "function") {
+                                                        if (!geo_id.match("GPL") && !geo_id.match("GSE")){
+                                                            geoFailedList.push(geo_id)
+                                                        }
+                                                    }
+                                                    console.log("endcheck2:"+geo_id)
+                                                    endFunc(callback,geoList,geoFailedList)
+                                                }
+                                            }
+                                        })
+                                    }
+                                }
+                            }
+                        }
+                        if (!succCheck1){
+                            if (typeof callback !== "function") {
+                                if (!geo_id.match("GPL") && !geo_id.match("GSE")){
+                                    geoFailedList.push(geo_id)
+                                } 
+                            }
+                            console.log("endcheck3:"+geo_id)
+                            endFunc(callback,geoList,geoFailedList)
+                        }
+                    }
+                });
+            }
+
+            var gdsQuery = function(geo_id, retstart, retmax, geoList, geoFailedList, queryDB){
+                var searchURL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=gds&usehistory=y&retmode=json&term='+geo_id;
+                var res = apiCallUrl(searchURL)
+                var reachToLastLevel=false
+                console.log(res);
+                console.log(geo_id);
+                if (res){
+                    if (res.esearchresult){
+                        if (res.esearchresult.webenv && res.esearchresult.querykey){
+                            var webenv = res.esearchresult.webenv;
+                            var querykey = res.esearchresult.querykey;
+                            var resultsURL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=sra&retmode=json&query_key='+querykey+'&WebEnv='+webenv+'&retstart='+retstart+'&retmax='+retmax;
+                            var res2 = apiCallUrl(resultsURL)
+                            console.log(res2)
+                            if (res2){
+                                if (res2.result){
+                                    var res2_res =res2.result
+                                    var sraQueryList = [];
+                                    $.each(res2_res, function (el) {
+                                        if (res2_res[el]["accession"] && res2_res[el]["title"]){
+                                            sraQueryList.push(res2_res[el]["accession"])
+                                            reachToLastLevel = true
+                                        }
+                                    });
+                                    var sraQueInd = 0
+                                    sraQuery(sraQueryList, sraQueInd, retstart, retmax, geoList, geoFailedList, queryDB, "");
+                                }
+                            } else {
+                                console.log("FAILED:"+geo_id)
+                                if (!geo_id.match("GPL") && !geo_id.match("GSE")){
+                                    geoFailedList.push(geo_id)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    console.log("FAILED:"+geo_id)
+                    if (!geo_id.match("GPL") && !geo_id.match("GSE")){
+                        geoFailedList.push(geo_id)
+                    }
+                }
+                if (!reachToLastLevel){
+                    console.log(geoList)
+                    checkWaitingList(geoList, geoFailedList, 0)
+                }
+            }
+
+
+
+            function initGEOsearch(geoList, geoFailedList){
+                var searchList = $('#viewGeoBut').data("searchList");
+                var searchIndex = $('#viewGeoBut').data("searchIndex");
+                var searchType = $('#viewGeoBut').data("searchType");
+                if (typeof searchList === 'undefined') { return;}
+                if (typeof searchIndex === 'undefined') { return;}
+                var geo_id =searchList[searchIndex];
+                if (geo_id) {
+                    //onstart:
+                    if (searchType != "retry"){
+                        showLoadingDivText("viewGeoButDiv","")
+                    }
+                    var retmax = 2000; 
+                    var retstart = 0;
+                    //show the precent complete based on queryDB
+                    // if queryDB equals to sra show it inside sraQuery function
+                    // if queryDB equals to gds show it inside gdsQuery function
+                    var callback = function(geoList){
+                        if (geoList.length == 0 ) {
+                            var queryDB = "gds"
+                            setTimeout( function () { 
+                                gdsQuery(geo_id, retstart, retmax, geoList, geoFailedList, queryDB);
+                            }, 1000)
+                        } else {
+                            setTimeout( function () { checkWaitingList(geoList, geoFailedList, 0) }, 1000) 
+                        }
+                    }
+
+                    var queryDB = "sra" 
+                    var sraQueryList = [geo_id];
+                    var sraQueryIndex = 0;
+                    sraQuery(sraQueryList,sraQueryIndex, retstart, retmax, geoList, geoFailedList, queryDB, callback)
+                }
+            }
+
+            //ex. GSM1331276 
+            //GSE30567(205 sample, sra) 
+            //GSE65774(208sample, gds)
+            //GSE78274(96sample, gds) 
+            //GSE55190(24sample gds) 
+            //ERP009109 PRJEB8073
+            //SRR10095965
+            //
+            $('#viewGeoBut').click(function () {
+                var geo_id = $('#geo_id').val()
+                if (geo_id){
+                    var geo_id = geo_id.replace(/,/g, ' ');
+                    var rawSearchList = geo_id.split(" ");
+                    var searchList = rawSearchList.filter(Boolean);
+                    $('#viewGeoBut').data("searchList", searchList);
+                    $('#viewGeoBut').data("searchIndex", 0);
+                    $('#viewGeoBut').data("searchType", "default");
+                    $('#viewGeoBut').data("retryFailed", 2);
+                    var geoList = [];
+                    var geoFailedList = [];
+                    initGEOsearch(geoList, geoFailedList);
+                }
+
+            });
+        });
+        //--GEO SEARCH ENDS--
 
         $('#addFileModal').on('click', '#mSaveFiles', function (event) {
             event.preventDefault();
@@ -5935,8 +7007,12 @@ $(document).ready(function () {
                 for (var i = 0; i < rowData.length; i++) {
                     var file_dir = rowData[i][2];
                     var amzKey = rowData[i][4];
-                    if (file_dir.match("s3:")){
+                    var googKey = rowData[i][5];
+                    if (file_dir.match(/s3:/i)){
                         file_dir = file_dir+"\t"+amzKey
+                    }
+                    if (file_dir.match(/gs:/i)){
+                        file_dir = file_dir+"\t"+googKey
                     }
                     fileDirArr.push(file_dir);
                 }
@@ -5945,17 +7021,26 @@ $(document).ready(function () {
                     infoModalText += ret.warnUser;
                 } 
                 if (!ret.file_array.length) {
-                    infoModalText += " * Please fill table by clicking 'Add All Files' or 'Add Selected Files' buttons."
+                    infoModalText += " * Please fill table by clicking 'Add All Files' or 'Add Selected Files' buttons.\n"
                 } 
                 var s3_archive_dir  = $.trim($("#s3_archive_dir").val());
                 var amzArchKey  = $("#mArchAmzKeyS3").val();
-
-                if (!warnUser && s3_archive_dir.match(/s3:/)){
+                if (!warnUser && s3_archive_dir.match(/s3:/i)){
                     if (!amzArchKey){
-                        infoModalText += " * Please select Amazon Archive Keys to save files into your S3 storage.";
+                        infoModalText += " * Please select Amazon Archive Keys to save files into your S3 storage.\n";
                         warnUser = true;
                     } 
                 }
+                var gs_archive_dir  = $.trim($("#gs_archive_dir").val());
+                var googArchKey  = $("#mArchGoogKeyGS").val();
+                if (!warnUser && gs_archive_dir.match(/gs:/i)){
+                    if (!googArchKey){
+                        infoModalText += " * Please select Google Archive Keys to save files into your Google storage.\n";
+                        warnUser = true;
+                    } 
+                }
+
+
                 if (infoModalText){
                     showInfoModal("#infoModal", "#infoModalText", infoModalText);
                 }
@@ -5975,8 +7060,11 @@ $(document).ready(function () {
 
                     formObj.file_dir = fileDirArr;
 
-                    if (s3_archive_dir.match("s3:")){
+                    if (s3_archive_dir.match(/s3:/i)){
                         formObj.s3_archive_dir = s3_archive_dir+"\t"+amzArchKey
+                    }
+                    if (gs_archive_dir.match(/gs:/i)){
+                        formObj.gs_archive_dir = gs_archive_dir+"\t"+googArchKey
                     }
                     formObj.file_array = ret.file_array;
                     formObj.run_env = $('#chooseEnv').find(":selected").val();
@@ -6010,13 +7098,21 @@ $(document).ready(function () {
                     infoModalText += ret.warnUser;
                 }
                 if (!ret.file_array.length) {
-                    infoModalText += " * Please fill 'Selected GEO Files' table by clicking 'Select' buttons in the 'Searched GEO Files' table."
+                    infoModalText += " * Please fill 'Selected GEO Files' table by clicking 'Select' buttons in the 'Searched GEO Files' table.\n"
                 }
-                var s3_archive_dir_geo  = $.trim($("#archive_dir_geo").val());
+                var s3_archive_dir_geo  = $.trim($("#s3_archive_dir_geo").val());
                 var amzArchKey  = $("#mArchAmzKeyS3_GEO").val();
-                if (s3_archive_dir_geo.match(/s3:/)){
+                if (s3_archive_dir_geo.match(/s3:/i)){
                     if (!amzArchKey){
-                        infoModalText += " * Please select Amazon Keys to save files into your S3 storage.";
+                        infoModalText += " * Please select Amazon Keys to save files into your S3 storage.\n";
+                        warnUser = true;
+                    } 
+                }
+                var gs_archive_dir_geo  = $.trim($("#gs_archive_dir_geo").val());
+                var googArchKey  = $("#mArchGoogKeyGS_GEO").val();
+                if (gs_archive_dir_geo.match(/gs:/i)){
+                    if (!googArchKey){
+                        infoModalText += " * Please select Google Keys to save files into your Google storage.\n";
                         warnUser = true;
                     } 
                 }
@@ -6043,13 +7139,17 @@ $(document).ready(function () {
                     } else if (collection_type[0][2] == "Single") {
                         formObj.collection_type = "single";
                     }
-                    if (s3_archive_dir_geo.match("s3:")){
+                    if (s3_archive_dir_geo.match(/s3:/i)){
                         formObj.s3_archive_dir = s3_archive_dir_geo+"\t"+amzArchKey
+                    }
+                    if (gs_archive_dir_geo.match(/gs:/i)){
+                        formObj.gs_archive_dir = gs_archive_dir_geo+"\t"+googArchKey
                     }
                     formObj.file_array = ret.file_array
                     formObj.run_env = $('#chooseEnv').find(":selected").val();
                     formObj.project_id = project_id;
                     formObj.p = "saveFile"
+                    console.log(formObj)
                     $.ajax({
                         type: "POST",
                         url: "ajax/ajaxquery.php",
@@ -6074,6 +7174,9 @@ $(document).ready(function () {
 
     createMultiselect = function (id,columnToSearch, apiColumn) {
         $(id).multiselect({
+            maxHeight: 500,
+            enableFiltering: true,
+            enableCaseInsensitiveFiltering: true,
             includeResetOption: true,
             resetText: "Clear filters",
             includeResetDivider: true,
@@ -6092,6 +7195,8 @@ $(document).ready(function () {
             }
         });
     }
+
+
     createMultiselectBinder = function (id) {
         var resetBut = $(id).find("a.btn-block");
         resetBut.click(function () {
@@ -6152,15 +7257,18 @@ $(document).ready(function () {
     });
 
     selectedSamplesTable = $('#selectedSamples').dataTable({
+        sScrollX: "100%",
         "columnDefs": [
             {
-                'targets': [4],
+                'targets': [4,5],
                 visible: false
             },
         ]
     });
-    selectedGeoSamplesTable = $('#selectedGeoSamples').dataTable();
-    searchedGeoSamplesTable = $('#searchedGeoSamples').dataTable();
+    selectedGeoSamplesTable = $('#selectedGeoSamples').dataTable({
+        sScrollX: "100%"});
+    searchedGeoSamplesTable = $('#searchedGeoSamples').dataTable({
+        sScrollX: "100%"});
 
     //xxx
     $(document).on('click', '.showDetailSample', function (e) {
@@ -6177,10 +7285,10 @@ $(document).ready(function () {
             }
             return '<tbody><tr><td>'+text+'</td></tr></tbody>';
         }
-        var s3Clean = function (text){
+        var pattClean = function (text){
             if (!text){
                 text = "";
-            } else if (text.match(/s3:/i)){
+            } else if (text.match(/s3:/i) || text.match(/gs:/i) ){
                 var textPath = $.trim(text).split("\t")[0]
                 if (textPath){
                     text = textPath;
@@ -6195,7 +7303,7 @@ $(document).ready(function () {
             tableRows += getBodyRow(data.name);
             if (data.file_dir){
                 tableRows += getHeaderRow("Input File(s) Directory:")
-                tableRows += getBodyRow(s3Clean(data.file_dir))
+                tableRows += getBodyRow(pattClean(data.file_dir))
                 tableRows += getHeaderRow("Input File(s):")
                 tableRows += getBodyRow(data.files_used.replace(/\|/g, '<br/>'))
             } else {
@@ -6215,7 +7323,9 @@ $(document).ready(function () {
             tableRows += getHeaderRow("Local Archive Directory:")
             tableRows += getBodyRow(data.archive_dir)
             tableRows += getHeaderRow("Amazon S3 Backup:")
-            tableRows += getBodyRow(s3Clean(data.s3_archive_dir))
+            tableRows += getBodyRow(pattClean(data.s3_archive_dir))
+            tableRows += getHeaderRow("Google Storage Backup:")
+            tableRows += getBodyRow(pattClean(data.gs_archive_dir))
             if (data.run_env){
                 tableRows += getHeaderRow("Run Environment:")
                 tableRows += getBodyRow(data.run_env) 
@@ -6245,11 +7355,7 @@ $(document).ready(function () {
         }
     } );
 
-    function resetPatternList() {
-        fillArray2Select([], "#singleList", true)
-        fillArray2Select([], "#reverseList", true)
-        fillArray2Select([], "#forwardList", true)
-    }
+
 
     $(function () {
         $(document).on('change', '#collection_type', function () {
@@ -6492,8 +7598,13 @@ $(document).ready(function () {
             button_div.appendChild(remove_button);
             var fileDir = $("#viewDir").data("fileDir")
             var mRunAmzKeyS3 = "";
-            if (fileDir.match(/s3:/)){
+            if (fileDir.match(/s3:/i)){
                 mRunAmzKeyS3 = $("#viewDir").data("amzKey")
+            }
+
+            var mRunGoogKeyGS = "";
+            if (fileDir.match(/gs:/i)){
+                mRunGoogKeyGS = $("#viewDir").data("googKey")
             }
 
             selectedSamplesTable.fnAddData([
@@ -6501,7 +7612,8 @@ $(document).ready(function () {
                 file_string,
                 fileDir,
                 button_div.outerHTML,
-                mRunAmzKeyS3
+                mRunAmzKeyS3,
+                mRunGoogKeyGS
             ]);
         }
     }
@@ -6553,8 +7665,12 @@ $(document).ready(function () {
                 button_div.appendChild(remove_button);
                 var fileDir = $("#viewDir").data("fileDir")
                 var mRunAmzKeyS3 = "";
-                if (fileDir.match(/s3:/)){
+                if (fileDir.match(/s3:/i)){
                     mRunAmzKeyS3 = $("#viewDir").data("amzKey")
+                }
+                var mRunGoogKeyGS = "";
+                if (fileDir.match(/gs:/i)){
+                    mRunGoogKeyGS = $("#viewDir").data("googKey")
                 }
 
                 selectedSamplesTable.fnAddData([
@@ -6562,7 +7678,8 @@ $(document).ready(function () {
                     file_string,
                     fileDir,
                     button_div.outerHTML,
-                    mRunAmzKeyS3
+                    mRunAmzKeyS3,
+                    mRunGoogKeyGS
                 ]);
             }
         }
@@ -6646,39 +7763,30 @@ $(document).ready(function () {
         $(document).on('change', '#mRunAmzKey', function () {
             checkReadytoRun();
         })
+        $(document).on('change', '#mRunGoogKey', function () {
+            checkReadytoRun();
+        })
     });
+
+
     $(function () {
         $(document).on('change', '#chooseEnv', function () {
             //reset before autofill feature actived for #runCmd
             changeOnchooseEnv = true;
             $('#runCmd').val("");
             var [allProSett, profileData] = getJobData("both");
-            var executor_job = profileData[0].executor_job;
-            if (executor_job === 'ignite') {
-                showHideColumnRunSett([1, 4, 5], "show")
-                showHideColumnRunSett([1, 4], "hide")
-            } else if (executor_job === 'local') {
-                showHideColumnRunSett([1, 4, 5], "hide")
-            } else {
-                showHideColumnRunSett([1, 4, 5], "show")
-            }
-            if (executor_job === "slurm"){
-                $('#eachProcessQueue').text('Partition');
-                $('#allProcessQueue').text('Partition');
-            }else {
-                $('#eachProcessQueue').text('Queue');
-                $('#allProcessQueue').text('Queue');
-            }
+            showhideOnEnv(allProSett, profileData);
             var profileTypeId = $('#chooseEnv').find(":selected").val();
             var patt = /(.*)-(.*)/;
             var proType = profileTypeId.replace(patt, '$1');
             var proId = profileTypeId.replace(patt, '$2');
             proTypeWindow = proType;
             proIdWindow = proId;
-            $('#jobSettingsDiv').css('display', 'inline');
             fillForm('#allProcessSettTable', 'input', allProSett);
-            selectAmzKey();
+            selectCloudKey("amazon");
+            selectCloudKey("google");
             checkShub()
+            checkCloudType(profileTypeId)
             checkReadytoRun();
             //save run in change 
             saveRun();
@@ -6710,21 +7818,23 @@ $(document).ready(function () {
             // Get the input id of proPipeInput;
             var proInputGet = getValues({ "p": "getProjectPipelineInputs", "id": proPipeInputID });
             if (proInputGet) {
-                var input_id = proInputGet[0].input_id;
-                var collection_id = proInputGet[0].collection_id;
-                var collection_name = proInputGet[0].collection_name;
-                if (collection_id && collection_id != "0" && collection_name) {
-                    selectMultiselect("#select-Collection", [collection_name]);
-                    sampleTable.rows({ search: 'applied' }).select();
-                    $('.nav-tabs a[href="#importedFilesTab"]').tab('show');
-                } else if (input_id) {
-                    var inputGet = getValues({ "p": "getInputs", "id": input_id })[0];
-                    if (inputGet) {
-                        //insert data (input_id) into form
-                        var formValues = $('#manualTab').find('input');
-                        var keys = Object.keys(inputGet);
-                        for (var i = 0; i < keys.length; i++) {
-                            $(formValues[i]).val(inputGet[keys[i]]);
+                if (proInputGet[0]) {
+                    var input_id = proInputGet[0].input_id;
+                    var collection_id = proInputGet[0].collection_id;
+                    var collection_name = proInputGet[0].collection_name;
+                    if (collection_id && collection_id != "0" && collection_name) {
+                        selectMultiselect("#select-Collection", [collection_name]);
+                        sampleTable.rows({ search: 'applied' }).select();
+                        $('.nav-tabs a[href="#importedFilesTab"]').tab('show');
+                    } else if (input_id) {
+                        var inputGet = getValues({ "p": "getInputs", "id": input_id })[0];
+                        if (inputGet) {
+                            //insert data (input_id) into form
+                            var formValues = $('#manualTab').find('input');
+                            var keys = Object.keys(inputGet);
+                            for (var i = 0; i < keys.length; i++) {
+                                $(formValues[i]).val(inputGet[keys[i]]);
+                            }
                         }
                     }
                 }
@@ -6781,7 +7891,6 @@ $(document).ready(function () {
         return [false, selRowsfileIdAr];
     }
 
-    //xxxxxxxxxxx
     $('#inputFilemodal').on('click', '#savefile', function (e) {
         $('#inputFilemodal').loading({
             message: 'Working...'
@@ -6907,13 +8016,11 @@ $(document).ready(function () {
     });
 
 
-
     //clicking on top tabs of select files table
     $('a[data-toggle="tab"]').on('shown.bs.tab click', function (e) {
         // header fix of datatabes in add to files/values tab
         $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
         var activatedTab = $(e.target).attr("href")
-        console.log(activatedTab)
         if (activatedTab === "#manualTab") {
             var projectRows = $('#projectListTable > tbody >');
             // if project is exist click on the first one to show files
@@ -6924,7 +8031,6 @@ $(document).ready(function () {
         } else if (activatedTab === "#manualTabV") {
             var projectRows = $('#projectListTableVal > tbody >');
             console.log(projectRows)
-
             // if project is exist click on the first one to show files
             if (projectRows && projectRows.length > 0) {
                 $('#projectListTableVal > tbody > tr > td ').find('[projectid="' + project_id + '"]').trigger("click")
@@ -7404,7 +8510,7 @@ $(document).ready(function () {
             $("#pluploader").pluploadQueue({
                 runtimes : 'html5,html4', //flash,silverlight
                 url : "ajax/upload.php",
-                chunk_size : '3mb', 
+                chunk_size : '2mb', 
                 // to enable chunk_size larger than 2mb: "ajax/.htaccess file should have "php_value post_max_size 12M", "php_value upload_max_filesize 12M"
                 // test for 320mb file : 
                 // chunk_size=10mb :take 130sec
@@ -7419,7 +8525,7 @@ $(document).ready(function () {
                 //multipart_params : {'target_dir': "old"},
                 filters : {
                     // Maximum file size
-                    max_file_size : '2gb'
+                    max_file_size : '10gb'
                 },
                 // PreInit events, bound before any internal events
                 preinit : {
@@ -7464,7 +8570,7 @@ $(document).ready(function () {
                         //Called right before the upload for a given file starts, can be used to cancel it if required
                         log('[BeforeUpload]', 'File: ', file);
                         updateTransferedFiles()
-                        var target_dir = $("#target_dir").val();
+                        var target_dir = $runscope.getUploadDir("exist");
                         var run_env = $('#chooseEnv').find(":selected").val();
                         if (target_dir && run_env){
                             up.settings.multipart_params.target_dir = target_dir;
@@ -7483,9 +8589,10 @@ $(document).ready(function () {
                         // Called when files are added to queue
                         log('[FilesAdded]');
                         //get files in the target directory
-                        var target_dir = $("#target_dir").val();
+                        var target_dir = $runscope.getUploadDir("exist");
                         var amazon_cre_id = "";
-                        var dirList = getValues({ "p": "getLsDir", dir: target_dir, profileType: proTypeWindow, profileId: proIdWindow, amazon_cre_id:amazon_cre_id });
+                        var google_cre_id = "";
+                        var dirList = getValues({ "p": "getLsDir", dir: target_dir, profileType: proTypeWindow, profileId: proIdWindow, amazon_cre_id:amazon_cre_id, google_cre_id:google_cre_id, project_pipeline_id: project_pipeline_id });
                         console.log(dirList)
                         var fileArr = [];
                         var errorAr = [];
@@ -7600,7 +8707,7 @@ $(document).ready(function () {
         initPlupload();
 
         $('#addFileModal').on('click', '.plupload_start_dummy', function (e) {
-            var target_dir = $("#target_dir").val();
+            var target_dir = $runscope.getUploadDir("exist");
             var run_env = $('#chooseEnv').find(":selected").val();
             var warning = ""
             if (target_dir && run_env){
@@ -7637,7 +8744,7 @@ $(document).ready(function () {
                     break;
                 }
             }
-            var target_dir = $("#target_dir").val();
+            var target_dir = $runscope.getUploadDir("exist");
             var run_env = $('#chooseEnv').find(":selected").val();
             if (fileName && target_dir && run_env){
                 var retryRsync = getValues({ p: "retryRsync", dir: target_dir, run_env:run_env, filename: fileName  });
@@ -7700,10 +8807,27 @@ $(document).ready(function () {
 
 
     $('#addFileModal').on('click', '#showHostFiles', function (e) {
-        var target_dir = $('#target_dir').val();
+        var perms = $("#chooseEnv").find(":selected").attr('perms');
+        var sharedProfile = false;
+        if (perms){
+            if (perms == "15"){
+                sharedProfile = true;
+            }
+        }
+        var target_dir = $runscope.getUploadDir("exist");
         $('#file_dir').val(target_dir);
-        $('#viewDirBut').trigger("click");
-        $('#addFileModal').find('.nav-tabs a[href="#hostFiles"]').tab('show');
+        if (sharedProfile){
+            viewDirButSearch(target_dir);
+            $('#file_dir_div').css("display","none");
+            $('#viewDirInfo').css("display","none");
+            $("#viewDir > option").attr("style", "pointer-events: none;");
+            $('#addFileModal').find('.nav-tabs a[href="#hostFiles"]').tab('show');
+        } else {
+            $("#viewDir > option").attr("style", "pointer-events: auto;");
+            $('#viewDirBut').trigger("click");
+            $('#addFileModal').find('.nav-tabs a[href="#hostFiles"]').tab('show');
+        }
+
     });
 
 
@@ -7789,13 +8913,16 @@ $(document).ready(function () {
 
 
 
-    //$(function () { allows to trigger when a.reportFile added later to DOM
+    //$(document) allows to trigger when a.reportFile added later into the DOM
     $(function () {
         $(document).on('shown.bs.tab click', 'a.reportFile', function (event) {
             var href = $(this).attr("href");
+            $(href).removeClass('fade').addClass('active in');
+            $(href).siblings().removeClass('active in').addClass('fade');
             $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
             //check if div is empty
             if (!$.trim($(href).html()).length) {
+                var writePerm= $runscope.checkUserWritePerm();
                 var uuid = $("#runVerReport").val();
                 var visType = $(this).attr("visType");
                 var filePath = $(this).attr("filepath");
@@ -7806,7 +8933,6 @@ $(document).ready(function () {
                     filename = split[split.length - 1];
                     dir = filePath.substring(0, filePath.indexOf(filename));
                 }
-                console.log(dir )
                 var fileid = $(this).attr("fileid");
                 var pubWebPath = $("#basepathinfo").attr("pubweb");
                 var debrowserUrl = $("#basepathinfo").attr("debrowser");
@@ -7900,19 +9026,33 @@ $(document).ready(function () {
                             uuid: uuid,
                             dir: dir,
                             filename: filename,
-                            pubWebPath: pubWebPath
+                            pubWebPath: pubWebPath,
+                            editable:writePerm
                         },
                         editorWidth: "60%",
                         reportWidth: "40%",
                         height: "565px",
                         theme: "monokai" //tomorrow
                     });
-                } else if (visType == "html" || visType == "pdf" || visType == "text") {
+                } else if (visType == "markdown") {
+                    var contentDiv = '<div style="width:100%;" dir="' + dir + '" filename="' + filename + '" filepath="' + filePath + '" id="' + fileid + '"></div>';
+                    $(href).append(contentDiv)
+                    var data = getValues({ p: "getFileContent", uuid: uuid, filename: "pubweb/" + filePath });
+
+                    $("#" + fileid).markdownEditor({
+                        ajax: {
+                            data: {"text":data, uuid:uuid, pubWebPath:pubWebPath, filePath:filePath, editable:writePerm}
+                        },
+                        backgroundcolorenter: "#ced9e3",
+                        backgroundcolorleave: "#ECF0F4",
+                        height: "565px"
+                    });
+                } else if (visType == "html" || visType == "pdf" || visType == "text" || visType == "image" ) {
                     var link = pubWebPath + "/" + uuid + "/" + "pubweb" + "/" + filePath;
-                    if (visType == "html" || visType == "text") {
-                        var iframe = '<iframe frameborder="0"  style="width:100%; height:100%;" src="' + link + '"></iframe>';
-                    } else if (visType == "pdf") {
+                    if (visType == "pdf") {
                         var iframe = '<object style="width:100%; height:100%;"  data="' + link + '" type="application/pdf"><embed src="' + link + '" type="application/pdf" /></object>';
+                    } else {
+                        var iframe = '<iframe frameborder="0"  style="width:100%; height:100%;" src="' + link + '"></iframe>';
                     }
                     var contentDiv = getHeaderIconDiv(fileid, visType) + '<div style="width:100%; height:calc(100% - 35px);" dir="' + dir + '" filename="' + filename + '" filepath="' + filePath + '" id="' + fileid + '">' + iframe + '</div>';
                     $(href).append(contentDiv);
@@ -7926,11 +9066,10 @@ $(document).ready(function () {
                     var contentDiv = getHeaderIconDiv(fileid, visType) + '<div style="width:100%; height:calc(100% - 35px);" dir="' + dir + '" filename="' + filename + '" filepath="' + filePath + '" id="' + fileid + '">' + iframe + '</div>';
                     $(href).append(contentDiv);
                     bindEveHandlerIcon(fileid)
-
-                    //                    $("#deb-" + fileid).load(function () {
-                    //                        $("#deb-" + fileid).loading('stop');
-                    //                    });
-                    //                    $("#deb-" + fileid).loading('start');
+                    //$("#deb-" + fileid).load(function () {
+                    //           $("#deb-" + fileid).loading('stop');
+                    //});
+                    //$("#deb-" + fileid).loading('start');
                 }
             }
         })
@@ -7951,6 +9090,376 @@ $(document).ready(function () {
     });
 
     //################################
+    // --markdownEditor jquery plugin --
+    //################################
+
+    (function ($) {
+        var methods = {
+            init: function (options) {
+                var settings = $.extend({
+                    // default values.
+                    color: "#556b2f",
+                    backgroundColor: "white",
+                    heightHeader: "60px",
+                    lineHeightHeader: "60px",
+                    heightBody: "600px",
+                    heightEditor: "525px",
+                    heightFileList: "565px",
+                    heightTitle: "50px",
+                    lineHeightTitle: "50px",
+                    heightIconBar: "35px"
+                }, options);
+                var elems = $(this);
+                elems.css("width", "100%")
+                elems.css("height", "100%")
+                var elemsID = $(this).attr("id");
+                elems.data('settings', settings);
+                elems.data("tooglescreen","expand")
+                var data = getData(settings);
+                if (data === undefined || data == null || data == "") {
+                    elems.append('<div  style="font-weight:900; line-height:' + settings.lineHeightTitle + 'height:' + settings.heightTitle + ';">No data available to show</div>')
+                } else {
+                    // append panel
+                    elems.append(getPanel(data, settings, elemsID));
+                    // after appending panel
+                    afterAppendPanel(data,settings, elemsID, elems)
+                }
+                return this;
+            }
+        };
+
+        $.fn.markdownEditor = function (methodOrOptions) {
+            if (methods[methodOrOptions]) {
+                return methods[methodOrOptions].apply(this, Array.prototype.slice.call(arguments, 1));
+            } else if (typeof methodOrOptions === 'object' || !methodOrOptions) {
+                // Default to "init"
+                return methods.init.apply(this, arguments);
+            } else {
+                $.error('Method ' + methodOrOptions + ' does not exist on jQuery');
+            }
+        };
+
+        var cleanFileName = function (name, type) {
+            if (type == "jquery"){
+                name = name.replace(/\./g, "_");
+                name = name.replace(/\//g, "_");
+            }
+            name = name.replace(/\$/g, "_");
+            name = name.replace(/\!/g, "_");
+            name = name.replace(/\</g, "_");
+            name = name.replace(/\>/g, "_");
+            name = name.replace(/\?/g, "_");
+            name = name.replace(/\(/g, "_");
+            name = name.replace(/\"/g, "_");
+            name = name.replace(/\'/g, "_");
+            name = name.replace(/\\/g, "_");
+            name = name.replace(/@/g, "_");
+            return name;
+        }
+
+
+
+        var getTab = function (elemsID, settings){
+            var fileid =  elemsID;
+            var tabID = "fileTabs_" + fileid;
+            var active = 'in active';
+            var editorID = "editorID_" + fileid;
+            var htmlID = "htmlID_" + fileid;
+            var scriptModeDivID = "scriptModeID_" + fileid;
+            var scriptMode = "scriptMode_" + fileid;
+            var htmlDiv = `<div id="`+htmlID+`" style="padding-left:15px; overflow:scroll; height:`+settings.heightFileList+`; width: 100%;"></div>`;
+            var aceEditorDiv = `<div id="`+editorID+`" style="display:none; height:`+settings.heightEditor+`; width: 100%;"></div>
+<div style="display:none;" id="`+scriptModeDivID+`" class="row">
+<p class="col-sm-4" style="padding-top:4px; padding-right:0; padding-left:60px;">Language Mode:</p>
+<div class="col-sm-3">
+<select id="`+scriptMode+`" class="form-control">
+<option value="markdown">markdown</option>
+</select>
+</div>
+</div>`;
+            var contentDiv = getFileContentHeaderIconDiv(fileid, settings) + '<div style="width:100%; height:'+settings.heightIconBar+';" editorid= "'+editorID+'" id="' + fileid + '">' + htmlDiv+aceEditorDiv + '</div>';
+            return '<div style="height:100%; width:100%;" id = "' + tabID + '" class = "tab-pane fade fullsize ' + active + '" >'+contentDiv+'</div>';
+        } 
+
+        var getFileContentHeaderIconDiv = function (fileid,settings) {
+            var editConfirmIcon = "";
+            var downloadIcon = `<li role="presentation"><a class="dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false"> <i style="font-size: 18px;" class="fa fa-download"></i> <span class="caret"></span></a> <ul class="dropdown-menu dropdown-menu-right"> <li><a fileid="` + fileid + `" id="downUrl-` + fileid + `" href="#">Download</a></li> </ul> </li>`;
+            if (settings.ajax.data.editable){
+                editConfirmIcon = `<li role="presentation"><a fileid="` + fileid + `" id="confirmmd-` + fileid + `" style="display:none;" data-toggle="tooltip" data-placement="bottom" data-original-title="Save Changes"><i style="font-size: 18px;" class="fa fa-save"></i></a><a fileid="` + fileid + `"  id="editmd-` + fileid + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Edit Markdown"><i style="font-size: 18px;" class="fa fa-pencil-square-o"></i></a></li>`;
+
+            }
+            var fullScreenIcon = `<li role="presentation"><a fileid="` + fileid + `" id="fullscr-` + fileid + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Toogle Full Screen"><i style="font-size: 18px;" class="fa fa-expand"></i></a></li>`;
+
+            var content = `<ul style="float:inherit"  class="nav nav-pills panelheader">` + editConfirmIcon + fullScreenIcon  + downloadIcon+`</ul>`;
+            var wrapDiv = '<div id="' + fileid + '-ContentHeaderIconDiv" style="float:right; height:35px; width:100%;">' + content + '</div>';
+            return wrapDiv;
+        }
+
+        var getFileContentCol = function (elemsID, dataObj, height, lineHeight, settings) { 
+            var colPercent = "100";
+            var heightT = ""
+            var lineHeightT = ""
+            var navTabDiv = '<div style="height:inherit;" class="tab-content">';
+            navTabDiv += getTab(elemsID, settings);
+            navTabDiv += '</div>';
+            if (height) {
+                heightT = 'height:' + height + '; ';
+            }
+            if (lineHeight) {
+                lineHeightT = 'line-height:' + lineHeight + '; ';
+            }
+            return '<div style="' + heightT + lineHeightT + 'float:left;  width:' + colPercent + '%; ">' + navTabDiv + "</div>";
+        }
+
+        var getColumnContent = function (dataObj, colObj, nTd) {
+            var col = "";
+            if (colObj.fnCreatedCell && !nTd) {
+                var nTd = $("<span></span>");
+                colObj.fnCreatedCell(nTd, dataObj)
+                col = nTd.clone().wrap('<p>').html();
+            } else if (colObj.fnCreatedCell && nTd) {
+                colObj.fnCreatedCell(nTd, dataObj)
+            } else if (colObj.data) {
+                col = dataObj[colObj.data]
+            }
+            return col
+        };
+
+        var toogleFullSize = function (tooglescreen, elems, settings) {
+            if (tooglescreen == "expand") {
+                var featList = ["z-index", "height", "position", "top", "left", "background"]
+                var newValue = ["1049", "100%", "fixed", "0", "0", "white"]
+                var oldCSS = {};
+                var newCSS = {};
+                for (var i = 0; i < featList.length; i++) {
+                    oldCSS[featList[i]] = elems.css(featList[i])
+                    newCSS[featList[i]] = newValue[i]
+                }
+                elems.data("oldCSS", oldCSS);
+                elems.data("tooglescreen", "compress");
+
+            } else {
+                var newCSS = elems.data("oldCSS");
+                elems.data("tooglescreen", "expand");
+
+            }
+            //apply css obj
+            $.each(newCSS, function (el) {
+                elems.css(el, newCSS[el])
+            });
+        }
+
+        var toogleHtmlSize = function (htmlID, elemsID, tooglescreen, elems, settings) {
+            if (tooglescreen == "expand") {
+                $("#" + htmlID ).css("height", $(window).height() -45)
+            } else {
+                $("#" + htmlID).css("height", settings.heightFileList)
+            }
+        }
+
+
+        var aceEditorResize = function (editorId){
+            setTimeout(function () { 
+                window[editorId].resize();
+                window[editorId].setOption("wrap", false);
+                window[editorId].setOption("wrapBehavioursEnabled", false);
+                window[editorId].setOption("wrap", true); 
+            }, 100);
+        }
+
+        var toogleEditorSize = function (editorId, elemsID,    tooglescreen, elems, settings) {
+            var each_file_id =  elemsID;
+            var icon = $('#fullscr-' + each_file_id).children()
+            if (tooglescreen == "expand") {
+                icon.attr("class", "fa fa-compress")
+            } else {
+                icon.attr("class", "fa fa-expand")
+            }
+            if (tooglescreen == "expand") {
+                $("#" + editorId ).css("height", $(window).height() - settings.heightIconBar.substring(0, settings.heightIconBar.length - 2) -45)
+            } else {
+                $("#" + editorId).css("height", settings.heightEditor)
+            }
+            aceEditorResize(editorId);
+        }
+
+        var getFileName = function (settings) {
+            var res = { filename: "", rest: "" };
+            var filePath = settings.ajax.data.filePath
+            var split = filePath.split("/")
+            res.filename = split[split.length - 1]
+            res.rest = split.slice(0, -1).join('/');
+            return res
+        }
+
+        var savemd = function (settings, editorId) {
+            var obj = getFileName(settings);
+            var newPath = obj.rest + "/" + obj.filename
+            var text = window[editorId].getValue();
+            text = encodeURIComponent(text);
+            var run_log_uuid = $("#runVerReport").val();
+            var saveData = getValues({ p: "saveFileContent", text: text, uuid: run_log_uuid, filename: "pubweb/" + newPath });
+            return saveData
+        }
+
+
+        var bindEveHandlerIcon = function (fileid, elems, elemsID, settings) {
+            $('[data-toggle="tooltip"]').tooltip();
+            $('#fullscr-' + fileid).on('click', function (event) {
+                var tooglescreen = elems.data("tooglescreen");
+                var editorID = "editorID_" + fileid;
+                var htmlID = "htmlID_" + fileid;
+                toogleHtmlSize(htmlID, elemsID, tooglescreen, elems, settings);
+                toogleEditorSize(editorID, elemsID, tooglescreen, elems, settings);
+                toogleFullSize(tooglescreen, elems, settings);
+            });
+            $('#downUrl-' + fileid).on('click', function (event) {
+                var fileid = $(this).attr("fileid")
+                var filename = $("#" + fileid).attr("filename")
+                var filepath = $("#" + fileid).attr("filepath")
+                var a = document.createElement('A');
+                var url = settings.ajax.data.pubWebPath + "/" + settings.ajax.data.uuid + "/pubweb/" + filepath
+                download_file(url, filename);
+            });
+            $('#editmd-' + fileid).on('click', function (event) {
+                var fileid = $(this).attr("fileid");
+                var editorID = "editorID_" + fileid;
+                var htmlID = "htmlID_" + fileid;
+                var scriptModeDivID = "scriptModeID_" + fileid;
+                aceEditorResize(editorID)
+                $('#confirmmd-' + fileid).css("display", "inline-block");
+                $('#editmd-' + fileid).css("display", "none");
+                $('#' + editorID).css("display", "inline-block");
+                $('#' + scriptModeDivID).css("display", "block");
+                $('#' + htmlID).css("display", "none");
+            });
+            $('#confirmmd-' + fileid).on('click', function (event) {
+                var fileid = $(this).attr("fileid")
+                var editorID = "editorID_" + fileid;
+                var htmlID = "htmlID_" + fileid;
+                var scriptModeDivID = "scriptModeID_" + fileid;
+                aceEditorResize(editorID);
+                $('#confirmmd-' + fileid).css("display", "none");
+                $('#editmd-' + fileid).css("display", "inline-block");
+                savemd(settings, editorID);
+                var textEditor = getValueAceEditor(editorID)
+                updateMarkdown(textEditor, htmlID)
+                $('#' + editorID).css("display", "none");
+                $('#' + scriptModeDivID).css("display", "none");
+                $('#' + htmlID).css("display", "inline-block");
+            });
+
+        }
+
+        var updateMarkdown = function (text, targetDiv){
+            var target = document.getElementById(targetDiv)
+            var converter = new showdown.Converter({tables: true});
+            var html = converter.makeHtml(text);
+            target.innerHTML = html;
+        }
+
+        var getColumnData = function (elemsID, dataObj, settings, height, lineHeight) {
+            var processParamDiv = ""
+            processParamDiv += getFileContentCol(elemsID, dataObj, height, lineHeight, settings)
+            return processParamDiv
+        }
+
+        var createAceEditor = function (editorId, script_modeId) {
+            //ace process editor
+            window[editorId] = ace.edit(editorId);
+            console.log(editorId)
+            window[editorId].setOption("wrap", true);
+            window[editorId].setOption("indentedSoftWrap", false);
+            window[editorId].setTheme("ace/theme/tomorrow");
+            window[editorId].getSession().setMode("ace/mode/sh");
+            window[editorId].$blockScrolling = Infinity;
+            //If mode is exist, then apply it
+            var mode = $("#"+script_modeId).val();
+            if (mode && mode != "") {
+                window[editorId].session.setMode("ace/mode/" + mode);
+            }
+            $(function () {
+                $(document).on('change', script_modeId, function () {
+                    var newMode = $(script_modeId).val();
+                    window[editorId].session.setMode("ace/mode/" + newMode);
+                })
+            });
+        }
+
+        var setValueAceEditor = function (editorId, text){
+            window[editorId].setValue(text);
+            window[editorId].clearSelection();
+        }
+
+        var getValueAceEditor = function (editorId){
+            var val = window[editorId].getValue();
+            return val;
+        }
+
+
+
+
+        var afterAppendEachEl = function (text, elemsID, elems, settings){
+            var fileid =  elemsID;
+            var tabID = "fileTabs_" + fileid;
+            var editorID = "editorID_" + fileid;
+            var scriptMode = "scriptMode_" + fileid;
+            var htmlID = "htmlID_" + fileid;
+            bindEveHandlerIcon(fileid, elems, elemsID, settings);
+            createAceEditor(editorID, scriptMode);
+            setValueAceEditor(editorID, text);
+            var textEditor = getValueAceEditor(editorID)
+            updateMarkdown(textEditor, htmlID)
+
+        }
+        var afterAppendPanel = function (dataObj, settings, elemsID, elems) {
+            var text = dataObj.text
+            afterAppendEachEl(text, elemsID, elems, settings)
+        }
+
+        var getPanel = function (dataObj, settings, elemsID) {
+            if (dataObj) {
+                var id = "0"
+                var bodyDiv = getColumnData(elemsID, dataObj, settings, settings.heightBody, settings.lineHeightBody);
+                var wrapBody = '<div  id="' + elemsID + '-' + id + '" style="word-break: break-all;"><div class="panel-body" style="background-color:white; height:' + settings.heightBody + '; padding:0px;">' + bodyDiv + '</div>';
+                return '<div id="' + elemsID + 'PanelDiv-' + id + '" ><div class="panel" style="background-color:' + settings.backgroundcolorleave + '; margin-bottom:15px;">' + wrapBody + '</div></div>'
+            } else
+                return ""
+        }
+
+
+        var getData = function (settings) {
+            var res = null;
+            if (settings.ajax.url) {
+                $.ajax({
+                    type: "POST",
+                    url: settings.ajax.url,
+                    data: settings.ajax.data,
+                    datatype: "json",
+                    async: false,
+                    cache: false,
+                    success: function (results) {
+                        res = results
+                    },
+                    error: function (errorThrown) {
+                        console.log("##Error: ");
+                        console.log(errorThrown)
+                    }
+                });
+                return res
+            } else if (settings.ajax.data) {
+                if (settings.ajax.data === undefined || settings.ajax.data.length == 0) {
+                    res = null;
+                } else {
+                    res = settings.ajax.data;
+                }
+            }
+            return res;
+        }
+
+        }(jQuery));
+
+    //################################
     // --rMarkEditor jquery plugin --
     //################################
 
@@ -7966,17 +9475,17 @@ $(document).ready(function () {
             elems.css("height", "100%")
             var elemsID = $(this).attr("id");
             var getEditorIconDiv = function () {
-                return `<ul style="float:inherit" class="nav nav-pills rmarkeditor">
-<li role="presentation"><a class="rmarkeditorrun" data-toggle="tooltip" data-placement="bottom" data-original-title="Run Script"><i style="font-size: 18px;" class="fa fa-play"></i></a></li>
-<li role="presentation"><a class="rmarkeditorsaveas" data-toggle="tooltip" data-placement="bottom" data-original-title="Save As">
-<span class="glyphicon-stack">
-<i class="fa fa-pencil glyphicon-stack-3x"></i>
-<i style="font-size: 18px;" class="fa fa-save glyphicon-stack-1x"></i>
-</span>
-</a></li>
-<li role="presentation"><a class="rmarkeditorsave" data-toggle="tooltip" data-placement="bottom" data-original-title="Save"><i style="font-size: 18px;" class="fa fa-save"></i></a></li>
-<li role="presentation"><a class="rmarkeditorsett" data-toggle="tooltip" data-placement="bottom" data-original-title="Settings"><i style="font-size: 18px;" class="fa fa-gear"></i></a></li>
-</ul>`
+                var rmarkeditorrun = "";
+                var rmarkeditorsaveas = "";
+                var rmarkeditorsave = "";
+                var rmarkeditorsett ="";
+                if (settings.ajax.editable){
+                    rmarkeditorrun = `<li role="presentation"><a class="rmarkeditorrun" data-toggle="tooltip" data-placement="bottom" data-original-title="Run Script"><i style="font-size: 18px;" class="fa fa-play"></i></a></li>`;
+                    rmarkeditorsaveas = `<li role="presentation"><a class="rmarkeditorsaveas" data-toggle="tooltip" data-placement="bottom" data-original-title="Save As"><span class="glyphicon-stack"><i class="fa fa-pencil glyphicon-stack-3x"></i><i style="font-size: 18px;" class="fa fa-save glyphicon-stack-1x"></i></span></a></li>`;
+                    rmarkeditorsave = `<li role="presentation"><a class="rmarkeditorsave" data-toggle="tooltip" data-placement="bottom" data-original-title="Save"><i style="font-size: 18px;" class="fa fa-save"></i></a></li>`;
+                    rmarkeditorsett = `<li role="presentation"><a class="rmarkeditorsett" data-toggle="tooltip" data-placement="bottom" data-original-title="Settings"><i style="font-size: 18px;" class="fa fa-gear"></i></a></li>`; 
+                }
+                return `<ul style="float:inherit" class="nav nav-pills rmarkeditor">`+rmarkeditorrun+rmarkeditorsaveas+rmarkeditorsave+rmarkeditorsett+`</ul>`
             }
             var getReportIconDiv = function () {
                 return `<ul style="float:inherit"  class="nav nav-pills rmarkeditor">
@@ -8451,7 +9960,7 @@ $(document).ready(function () {
                             if ($('#rMarkRename').find("input.rmarkfilename")) {
                                 var newName = $($('#rMarkRename').find("input.rmarkfilename")[0]).val();
                                 var saveData = saveCommand(editorId, newName)
-                                $("#reportRows").dynamicRows("fnRefresh", "columnsBody")
+                                $("#reportRows").dynamicRows("fnRefresh", {type:"columnsBody"})
                                 var newFilepath = divOldDir + newName;
                                 var allfiles = elems.closest("div.panel-body").find("a[filepath]")
                                 for (var i = 0; i < allfiles.length; i++) {
@@ -8639,6 +10148,7 @@ $(document).ready(function () {
                 if (data === undefined || data == null || data == "") {
                     elems.append('<div  style="font-weight:900; line-height:' + settings.lineHeightTitle + 'height:' + settings.heightTitle + ';">No data available to report</div>')
                 } else {
+                    // append panel
                     var title = getTitle(data[0], settings);
                     if (title) {
                         elems.append(title);
@@ -8646,7 +10156,9 @@ $(document).ready(function () {
                     $(data).each(function (i) {
                         elems.append(getPanel(data[i], settings, elemsID));
                     });
-                    refreshHandler(settings)
+                    // after appending panel
+                    afterAppendPanel(data,settings, elemsID, elems);
+                    refreshHandler(settings);
                 }
                 return this;
             },
@@ -8655,10 +10167,10 @@ $(document).ready(function () {
                 var elemsID = $(this).attr("id");
                 var settings = elems.data('settings');
                 var data = getData(settings);
-                if (content == "columnsBody") {
+                if (content.type == "columnsBody") {
                     $(data).each(function (i) {
-                        var id = data[i].id
                         var dataObj = data[i];
+                        var id = dataObj.id;
                         var existWrapBody = $("#" + elemsID + '-' + id);
                         if (existWrapBody) {
                             var existBodyDiv = existWrapBody.children().children()
@@ -8670,6 +10182,9 @@ $(document).ready(function () {
                             })
                         }
                     });
+                    if (content.callback){
+                        content.callback()
+                    }
                 }
                 return this;
             }
@@ -8686,6 +10201,10 @@ $(document).ready(function () {
             }
         };
 
+
+        var afterAppendPanel = function (dataObj, settings, elemsID, elems) {
+            //            createModal()
+        }
 
 
         var refreshHandler = function (settings) {
@@ -8732,6 +10251,7 @@ $(document).ready(function () {
                 var nTd = $("<span></span>");
                 colObj.fnCreatedCell(nTd, dataObj)
                 col = nTd.clone().wrap('<p>').html();
+                // fnRefresh will execute if nTd is available 
             } else if (colObj.fnCreatedCell && nTd) {
                 colObj.fnCreatedCell(nTd, dataObj)
             } else if (colObj.data) {
@@ -8739,6 +10259,7 @@ $(document).ready(function () {
             }
             return col
         };
+
 
         var getColumnData = function (dataObj, settings, cols, height, lineHeight) {
             var columnPercent = 100;
@@ -8814,6 +10335,7 @@ $(document).ready(function () {
                     cache: false,
                     success: function (results) {
                         res = results
+
                     },
                     error: function (errorThrown) {
                         console.log("##Error: ");
@@ -8835,6 +10357,541 @@ $(document).ready(function () {
 
 
     $(function () {
+        function reloadReportRows(){
+            var run_log_uuid = $("#runVerReport").val();
+            $("#reportRows").empty();
+            //add 'className: "center"' to center text in columns array
+            $("#reportRows").dynamicRows({
+                ajax: {
+                    url: "ajax/ajaxquery.php",
+                    data: { "p": "getReportData", uuid: run_log_uuid, path: "pubweb", pipeline_id: pipeline_id }
+                },
+                columnsBody: [{
+                    //file list
+                    data: null,
+                    colPercent: "15",
+                    overflow: "scroll",
+                    fnCreatedCell: function (nTd, oData) {
+                        var getExtension = function (filename){
+                            var re = /(?:\.([^.]+))?$/;
+                            var ext = re.exec(filename)[1];   // "txt"
+                            if (!ext){
+                                ext = "";
+                            }
+                            return ext;
+                        }
+                        var getIconByExtension = function(ext){
+                            var icon = "fa fa-file-text-o";
+                            if (ext == "tsv" || ext == "csv" || ext === "xls" || ext === "xlsx") {
+                                icon = "fa fa-table";
+                            } else if (ext == "html") {
+                                icon = "fa fa-file-code-o";
+                            } else if (ext == "pdf") {
+                                icon = "fa fa-file-pdf-o";
+                            } else if (ext == "rmd") {
+                                icon = "fa fa-pie-chart";
+                            } else if (ext == "md") {
+                                icon = "fa fa-edit";
+                            } else if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "tif" || ext == "tiff" || ext == "bmp"  || ext == "gif") {
+                                icon = "fa fa-file-image-o";
+                            }
+                            return icon;
+                        }
+                        var getVisTypeByExtension = function(ext){
+                            var visType = "text";
+                            if (ext == "tsv") {
+                                visType = "table";
+                            } else if (ext == "html") {
+                                visType = "html";
+                            } else if (ext == "pdf") {
+                                visType = "pdf";
+                            } else if (ext == "rmd") {
+                                visType = "rmarkdown";
+                            } else if (ext == "md") {
+                                visType = "markdown";
+                            } else if (ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "tif" || ext == "tiff" || ext == "bmp"  || ext == "gif") {
+                                visType = "image";
+                                //will download file if not supported
+                            } else if (ext == "txt" || ext === "xls" || ext === "xlsx" || ext === "csv") {
+                                visType = "text";
+                            }
+                            return visType;
+                        }
+
+                        var run_log_uuid = $("#runVerReport").val();
+                        var pubWebPath = $("#basepathinfo").attr("pubweb");
+                        var visType = oData.pubWeb
+                        var icon = "fa fa-file-text-o";
+                        if (visType == "table" || visType === "table-percent") {
+                            icon = "fa fa-table";
+                        }
+                        var fileList = oData.fileList;
+                        var liText = "";
+                        var active = "";
+                        $.each(fileList, function (el) {
+                            if (fileList[el]) {
+                                if (el == 0) {
+                                    active = "active"
+                                } else {
+                                    active = "";
+                                }
+                                //if oData.pubWeb= "run_description" -> fill file icons and visType based on their file type
+                                if (oData.pubWeb == "run_description"){
+                                    var ext = getExtension(fileList[el]);
+                                    icon = getIconByExtension(ext);
+                                    visType = getVisTypeByExtension(ext);
+                                }
+                                var filepath = oData.name + "/" + fileList[el];
+                                var link = pubWebPath + "/" + run_log_uuid + "/" + "pubweb" + "/" + filepath;
+                                var filenameCl = cleanProcessName(fileList[el])
+                                var tabID = 'reportTab' + oData.id + "_" + filenameCl;
+                                var fileID = oData.id + "_" + filenameCl;
+                                //remove directory str, only show filename in label
+                                var labelText = /[^/]*$/.exec(fileList[el])[0];
+                                liText += '<li class="' + active + '"><a  class="reportFile" data-toggle="tab" fileid="' + fileID + '" filepath="' + filepath + '" href="#' + tabID + '" visType="' + visType + '" fillsrc="' + link + '" ><i class="' + icon + '"></i>' + labelText + '</a></li>';
+                            }
+                        });
+
+                        //xxxxxxx
+                        var addEveHandlerIconDiv = function (id){
+                            var addIconID = "addIcon-" + id;
+                            var renameIcon = "renameIcon-" + id;
+                            var deleteIcon = "deleteIcon-" + id;
+
+                            var getFileName = function (filePath) {
+                                var res = { filename: "", rest: "" };
+                                var split = filePath.split("/")
+                                res.filename = split[split.length - 1]
+                                res.rest = split.slice(0, -1).join('/');
+                                return res
+                            }
+
+                            //return 1 if newName is found in directory.
+                            var checkDuplicateFile = function (newName,fileNameObj){
+                                var ret = 1;
+                                if (!fileNameObj.rest){
+                                    return 0;
+                                }
+                                var targetfilepath = fileNameObj.rest + "/" + newName;
+                                var checkDup = $("#"+oData.id+"-ListHeaderIconDiv").siblings("li").find("a").filter(function () {
+                                    return $(this).attr('filepath') === targetfilepath
+                                });
+                                if (!checkDup.length){
+                                    ret = 0;
+                                }
+                                return ret;
+                            }
+
+                            var dynrows_savefile = function (filePath,text) {
+                                var obj = getFileName(filePath);
+                                var newPath = obj.rest + "/" + obj.filename
+                                text = encodeURIComponent(text);
+                                var run_log_uuid = $("#runVerReport").val();
+                                var saveData = getValues({ p: "saveFileContent", text: text, uuid: run_log_uuid, filename: "pubweb/" + newPath });
+                                return saveData
+                            }
+
+                            var getFileNameObj = function (){
+                                var obj = {};
+                                var activeLiA = $("#"+oData.id+"-ListHeaderIconDiv").siblings("li.active").find("a");
+                                var filePath = $(activeLiA[0]).attr("filepath");
+                                if (filePath){
+                                    obj = getFileName(filePath);
+                                }
+                                return obj;
+                            }
+
+
+                            var dynrows_movefile = function (file1, file2){
+                                var run_log_uuid = $("#runVerReport").val();
+                                if (file1 && file2){
+                                    var moveFile = getValues({ 
+                                        p: "moveFile", 
+                                        "type": "pubweb",
+                                        "from": run_log_uuid + "/pubweb/" + file1,
+                                        "to": run_log_uuid + "/pubweb/" + file2
+                                    });
+                                    return moveFile;
+                                }
+                            }
+
+                            var createModal = function () {
+                                var fileModal = `
+<div id="dynRowsInfo" class="modal fade" tabindex="-1" role="dialog">
+<div class="modal-dialog" role="document">
+<div class="modal-content">
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<h4 class="modal-title" id="dynRowsInfoTitle">Title</h4>
+</div>
+<div class="modal-body">
+<div id="dynRowsEditDiv" class="form-horizontal">
+<div class="form-group">
+<label class="col-sm-4 control-label">Filename <span><a data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Please edit filename with extenstion. Eg. notes.md"><i class="glyphicon glyphicon-info-sign"></i></a></span></label>
+<div class="col-sm-8">
+<input id="dynRowsEditFileName" type="text" class="form-control">
+</div>
+</div>
+</div>
+<div id="dynRowsAddDiv" style="padding-right:10px;" class="form-horizontal">
+
+<div class="form-group">
+<label class="col-sm-4 control-label"><input type="checkbox" id="dynRowsEmptyFileCheck" name="check_emptyFile" data-toggle="collapse" data-target="#dynRows_emptyFileDiv" class="collapsed" aria-expanded="false"> Create Empty File </label>
+</div>
+<div id="dynRows_emptyFileDiv" class="collapse" aria-expanded="false" style="height: 0px;">
+<div class="form-group">
+<label class="col-sm-4 control-label">Filename <span><a data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Please enter filename with extenstion. Eg. notes.md"><i class="glyphicon glyphicon-info-sign"></i></a></span></label>
+<div class="col-sm-8">
+<input id="dynRowsFileName" type="text" class="form-control">
+</div>
+</div>
+</div>
+<div class="form-group">
+<label class="col-sm-4 control-label"><input type="checkbox" id="dynRows_uploadFileCheck" name="check_uploadFile" data-toggle="collapse" data-target="#dynRows_uploadFileDiv" class="collapsed" aria-expanded="false"> Upload File </label>
+</div>
+<div id="dynRows_uploadFileDiv" class="collapse" aria-expanded="false" style="height: 0px;">
+<div class="form-group">
+<div class="col-sm-12" id="dynRows_import_div">
+<form id="dynRowsUploadForm" action="ajax/import.php" class="dropzone">
+<div class="fallback ">
+<input name="file" type="file" />
+</div>
+</form>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+<button id="dynRowsInfoButton" type="button" class="btn btn-primary" >Save</button>
+</div>
+</div>
+</div>
+</div>`;
+
+                                if (document.getElementById("dynRowsInfo") === null) {
+                                    $('body').append(fileModal);
+                                }
+                            }
+
+
+                            var bindEventHandlerModal = function(){
+                                //clean previous binds
+                                $("#reportRows").off();
+                                $("#dynRowsInfo").off();
+                                //not allow to click both option
+                                disableDoubleClickCollapse("dynRowsEmptyFileCheck", "dynRows_emptyFileDiv", "dynRows_uploadFileCheck","dynRows_uploadFileDiv", "dynRowsInfo");
+
+
+                                $("#reportRows").on('click', '#'+addIconID, function (event) {
+                                    window.dynRows = {};
+                                    window.dynRows.filename = ""
+                                    var myDropzone = Dropzone.forElement("#dynRowsUploadForm");
+                                    myDropzone.removeAllFiles();
+                                    if ($('#'+"dynRowsEmptyFileCheck").is(":checked")) {
+                                        $('#'+"dynRowsEmptyFileCheck").trigger("click");
+                                    }
+                                    if ($('#'+"dynRows_uploadFileCheck").is(":checked")) {
+                                        $('#'+"dynRows_uploadFileCheck").trigger("click");
+                                    }
+                                    $("#dynRowsInfoTitle").text("Create New File")
+                                    $("#dynRowsFileName").val("NewFile.md")
+                                    $("#dynRowsEditDiv").css("display","none");
+                                    $("#dynRowsAddDiv").css("display","block");
+                                    $("#dynRowsInfoButton").attr("class", "btn btn-primary save")
+                                    $("#dynRowsInfoButton").text("Save")
+                                    $("#dynRowsInfo").modal("show");
+                                });
+
+                                var callbackActiveClick = function (){
+                                    $("#"+oData.id+"-ListHeaderIconDiv").siblings("li.active").find("a").trigger("click");
+                                }
+
+                                $('#dynRowsInfo').on('hide.bs.modal', function (event) {
+                                    $("#reportRows").dynamicRows("fnRefresh", {type:"columnsBody", callback:callbackActiveClick});
+                                });
+
+                                $("#dynRowsInfo").on('click', '.save', function (event) {
+                                    event.preventDefault();
+                                    var obj = getFileNameObj()
+                                    if ($('#'+"dynRowsEmptyFileCheck").is(":checked")) {
+                                        var newName = $("#dynRowsFileName").val()
+                                        if (newName){
+                                            var checkDuplicate = checkDuplicateFile(newName,obj);
+                                            console.log(checkDuplicate)
+                                            if (!checkDuplicate){
+                                                var filepath = oData.name + "/" +newName;
+                                                var text = "";
+                                                dynrows_savefile(filepath,text);
+                                                $("#dynRowsInfo").modal("hide");
+                                            } else {
+                                                showInfoModal("#infoMod", "#infoModText", "Same filename found in your directory, please enter another filename.")
+                                            }
+                                        } else{
+                                            showInfoModal("#infoMod", "#infoModText", "Please enter valid filename.")
+                                        }
+                                    } else {
+                                        $("#dynRowsInfo").modal("hide");
+                                    } 
+                                });
+
+                                $("#reportRows").on('click', '#'+deleteIcon, function (event) {
+                                    var obj = getFileNameObj();
+                                    var activeLiA = $("#"+oData.id+"-ListHeaderIconDiv").siblings("li.active").find("a");
+                                    var text = 'Are you sure you want to delete '+obj.filename+'?';
+                                    var savedData = $(activeLiA[0]);
+                                    var execFunc = function(savedData){
+                                        var filePath = savedData.attr("filepath");
+                                        var run_log_uuid = $("#runVerReport").val();
+                                        var deleteFile = getValues({ p: "deleteFile", uuid: run_log_uuid, filename: "pubweb/" + filePath });
+                                        console.log("deleteFile", deleteFile)
+                                        console.log("dynamicRows refresh1")
+                                        $("#reportRows").dynamicRows("fnRefresh", {type:"columnsBody",callback:callbackActiveClick});
+                                        console.log("dynamicRows refresh2")
+                                    }
+                                    showConfirmDeleteModal(text, savedData, execFunc)
+                                });
+
+                                $("#reportRows").on('click', '#'+renameIcon, function (event) {
+                                    var obj = getFileNameObj()
+                                    $("#dynRowsInfoTitle").text("Edit Filename")
+                                    $("#dynRowsEditFileName").val(obj.filename)
+                                    $("#dynRowsEditDiv").css("display","block");
+                                    $("#dynRowsAddDiv").css("display","none");
+                                    $("#dynRowsInfoButton").attr("class", "btn btn-primary rename")
+                                    $("#dynRowsInfoButton").text("Save")
+                                    $("#dynRowsInfo").modal("show");
+                                });
+
+                                $("#dynRowsInfo").on('click', '.rename', function (event) {
+                                    event.preventDefault();
+                                    var obj = getFileNameObj()
+                                    var newName = $("#dynRowsEditFileName").val()
+                                    if (newName){
+                                        var checkDuplicate = checkDuplicateFile(newName,obj);
+                                        if (!checkDuplicate){
+                                            var filepath1 = oData.name + "/" +obj.filename;
+                                            var filepath2 = oData.name + "/" +newName;
+                                            dynrows_movefile(filepath1,filepath2);
+                                            $("#dynRowsInfo").modal("hide");
+                                        } else {
+                                            showInfoModal("#infoMod", "#infoModText", "Same filename found in your directory, please enter another filename.")
+                                        }
+                                    } else {
+                                        showInfoModal("#infoMod", "#infoModText", "Please enter valid filename.")
+                                    }
+                                });
+                            }
+
+
+                            var createDropzone = function (){
+                                console.log("createDropzone")
+                                if (Dropzone.options.dynRowsUploadForm){
+                                    $("#dynRowsUploadForm")[0].dropzone.destroy()
+                                    $("#dynRowsUploadForm").off()
+                                }
+                                // Configuriation of dropzone of id:dynRowsUploadForm in mdEditorInfo modal
+                                window.dynRows = {};
+                                window.dynRows.filename = "";
+                                Dropzone.options.dynRowsUploadForm = {
+                                    paramName: "pubweb", // The name that will be used to transfer the file
+                                    maxFilesize: 30, // MB
+                                    maxFiles:10,
+                                    createImageThumbnails: false,
+                                    dictDefaultMessage: 'Drop your file here or <button type="button" class="btn btn-default" >Select File </button>',
+                                    accept: function (file, done) {
+                                        window.dynRows.filename= file.name
+                                        done();
+                                        $('#dynRows_upload_name_span').text(file.name)
+                                    },
+                                    init: function() {
+                                        this.on("sending", function(file, xhr, formData){
+                                            formData.append("uuid", run_log_uuid);
+                                            formData.append("dir", oData.name);
+                                        });
+                                    }
+                                }; 
+                                $("#dynRowsUploadForm").dropzone();  
+
+                            }
+                            createModal()
+                            createDropzone()
+                            bindEventHandlerModal()
+                        }
+
+                        var getFileListHeaderIconDiv = function (id) {
+                            var border = "border-right: 1px solid lightgray;"
+                            var addIcon = `<li role="presentation"><a id="addIcon-` + id + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Add File"><i style="font-size: 18px;" class="fa fa-plus"></i></a></li>`;
+                            var renameIcon = `<li role="presentation"><a id="renameIcon-` + id + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Rename File"><i style="font-size: 18px;" class="fa fa-pencil"></i></a></li>`;
+                            var deleteIcon = `<li role="presentation"><a  id="deleteIcon-` + id + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Delete File"><i style="font-size: 18px;" class="fa fa-trash"></i></a></li>`;
+                            var content = `<ul style="float:right"  class="nav nav-pills panelheader">` + addIcon + renameIcon + deleteIcon + `</ul>`;
+                            var wrapDiv = '<div id="' + id + '-ListHeaderIconDiv" style="'+border+'height:35px; width:100%;">' + content + '</div>';
+                            return wrapDiv;
+                        }
+                        var IconDiv = "";
+                        var writePerm= $runscope.checkUserWritePerm();
+                        //allows user to edit run page
+                        if (writePerm){
+                            if (oData.pubWeb == "run_description"){
+                                IconDiv = getFileListHeaderIconDiv(oData.id);
+                                addEveHandlerIconDiv(oData.id)
+                            }
+                        }
+                        if (!liText) {
+                            liText = '<div style="margin:10px;"> No data available</div>';
+                        }
+                        var allText = IconDiv + liText;
+                        $(nTd).html('<ul class="nav nav-pills nav-stacked">' + allText + '</ul>');
+                    },
+                }, {
+                    //file content
+                    data: null,
+                    colPercent: "85",
+                    fnCreatedCell: function (nTd, oData) {
+                        var fileList = oData.fileList;
+                        if ($(nTd).is(':empty')) {
+                            var navTabDiv = "";
+                            navTabDiv += '<div style="height:inherit;" class="tab-content">';
+                            var liText = "";
+                            var active = "";
+                            $.each(fileList, function (el) {
+                                var filenameCl = cleanProcessName(fileList[el])
+                                var tabID = 'reportTab' + oData.id + "_" + filenameCl;
+                                var active = "";
+                                if (el == 0) {
+                                    active = 'in active';
+                                }
+                                navTabDiv += '<div dynamicrowstabs="" style="height:100%; width:100%;" id = "' + tabID + '" class = "tab-pane fade fullsize ' + active + '" ></div>';
+                            });
+                            navTabDiv += '</div>';
+                            $(nTd).html(navTabDiv);
+                        } else {
+                            //when dynamicRows.fnrefresh is executed following code will update the tabid section
+                            var newTabIdList = []
+                            $.each(fileList, function (el) {
+                                var filenameCl = cleanProcessName(fileList[el])
+                                var newTabID = 'reportTab' + oData.id + "_" + filenameCl;
+                                newTabIdList.push(newTabID)
+                            });
+
+                            //get all existing tabs
+                            var alltabs = $(nTd).find("div[dynamicrowstabs]");
+                            for (var k = 0; k < alltabs.length; k++) {
+                                var oldTabID = $(alltabs[k]).attr("id");
+                                if($.inArray(oldTabID, newTabIdList) === -1){
+                                    //remove oldTabID from DOM, since it doesn't found in newTabIdList
+                                    $(alltabs[k]).remove();
+                                }
+                            }
+                            //add new tabs
+                            $.each(fileList, function (el) {
+                                var filenameCl = cleanProcessName(fileList[el])
+                                var newTabID = 'reportTab' + oData.id + "_" + filenameCl;
+                                if (!$(nTd).find("div#" + newTabID).length) {
+                                    $(nTd).children().append('<div dynamicrowstabs="" style="height:100%; width:100%;" id = "' + newTabID + '" class = "tab-pane fade fullsize" ></div>')
+                                }
+                                if (el == 0){
+                                    $("#"+newTabID).addClass("in active").removeClass("fade");
+                                }
+                            });
+                        }
+                    },
+                }],
+                columnsHeader: [{
+                    data: null,
+                    colPercent: "4",
+                    fnCreatedCell: function (nTd, oData) {
+                        $(nTd).html('<span class="info-box-icon" style="height:60px; line-height:60px; width:30px; font-size:18px;  background:rgba(0,0,0,0.2);"><i class="fa fa-folder"></i></span>');
+                    },
+                }, {
+                    data: null,
+                    fnCreatedCell: function (nTd, oData) {
+                        var gNum = oData.id.split("_")[0].split("-")[1];
+                        var rowID = "outputTa-" + gNum;
+                        var processName = $('#' + rowID + ' > :nth-child(5)').text();
+                        if (oData.pubWeb == "run_description"){
+                            processName = "Run Notes"
+                        }
+                        var processID = $('#' + rowID + ' > :nth-child(5)').text();
+                        $(nTd).html('<span  gnum="' + gNum + '" processid="' + processID + '">' + createLabel(processName) + '</span>');
+                    },
+                    colPercent: "37"
+                }, {
+                    data: null,
+                    colPercent: "39",
+                    fnCreatedCell: function (nTd, oData) {
+                        $(nTd).html('<span>' + createLabel(oData.name) + '</span>');
+                    }
+                }, {
+                    data: null,
+                    colPercent: "20",
+                    fnCreatedCell: function (nTd, oData) {
+                        var visType = oData.pubWeb
+                        var icon = "fa fa-file-text-o";
+                        var text = visType;
+                        if (visType === "table" || visType === "table-percent") {
+                            icon = "fa fa-table";
+                            text = "Table";
+                        } else if (visType === "html") {
+                            icon = "fa fa-file-code-o";
+                            text = "HTML";
+                        } else if (visType === "pdf") {
+                            icon = "fa fa-file-pdf-o";
+                            text = "PDF";
+                        } else if (visType === "rmarkdown") {
+                            icon = "fa fa-pie-chart";
+                            text = "R-Markdown";
+                        } else if (visType === "highcharts") {
+                            icon = "fa fa-line-chart";
+                            text = "Charts";
+                        } else if (visType === "debrowser") {
+                            icon = "glyphicon glyphicon-stats";
+                            text = "DE-Browser";
+                        } else if (visType === "image") {
+                            icon = "fa fa-file-image-o";
+                            text = "Image";
+                        } else if (visType === "run_description") {
+                            icon = "fa fa-edit";
+                            text = "Markdown";
+                        }
+                        $(nTd).html('<a data-toggle="tooltip" data-placement="bottom" data-original-title="View"><i class="' + icon + '"></i> ' + text + '</a>');
+                    }
+                }],
+                columnsTitle: [{
+                    data: null,
+                    colPercent: "4"
+
+                }, {
+                    data: null,
+                    fnCreatedCell: function (nTd, oData) {
+                        $(nTd).html('<span>PROCESS</span>');
+                    },
+                    colPercent: "37"
+                }, {
+                    data: "name",
+                    colPercent: "39",
+                    fnCreatedCell: function (nTd, oData) {
+                        $(nTd).html('<span>PUBLISHED DIRECTORY</span>');
+                    },
+                }, {
+                    data: null,
+                    colPercent: "20",
+                    fnCreatedCell: function (nTd, oData) {
+                        $(nTd).html('<span>VIEW FORMAT</span>');
+                    }
+                }],
+                backgroundcolorenter: "#ced9e3",
+                backgroundcolorleave: "#ECF0F4",
+                heightHeader: "60px"
+            });
+        }
+
+        $(document).on('click', '#refreshVerReport', function (event) {
+            reloadReportRows();
+        });
+
+
         $(document).on('change', '#runVerReport', function (event) {
             var run_log_uuid = $(this).val();
             var reload = true
@@ -8865,167 +10922,65 @@ $(document).ready(function () {
                 }
 
                 $("#runTitleReport").text(runTitleLog)
-                if (reload) {
-                    $("#reportRows").empty();
-                    //add 'className: "center"' to center text in columns array
-                    $("#reportRows").dynamicRows({
-                        ajax: {
-                            url: "ajax/ajaxquery.php",
-                            data: { "p": "getReportData", uuid: run_log_uuid, path: "pubweb", pipeline_id: pipeline_id }
-                        },
-                        columnsBody: [{
-                            //file list
-                            data: null,
-                            colPercent: "15",
-                            overflow: "scroll",
-                            fnCreatedCell: function (nTd, oData) {
-                                var run_log_uuid = $("#runVerReport").val();
-                                var pubWebPath = $("#basepathinfo").attr("pubweb");
-                                var visType = oData.pubWeb
-                                var icon = "fa-file-text-o";
-                                if (visType == "table" || visType === "table-percent") {
-                                    icon = "fa-table";
-                                }
-                                var fileList = oData.fileList;
-                                var liText = "";
-                                var active = "";
-                                $.each(fileList, function (el) {
-                                    if (fileList[el]) {
-                                        if (el == 0) {
-                                            active = "active"
-                                        } else {
-                                            active = "";
-                                        }
-                                        var filepath = oData.name + "/" + fileList[el];
-                                        var link = pubWebPath + "/" + run_log_uuid + "/" + "pubweb" + "/" + filepath;
-                                        var filenameCl = cleanProcessName(fileList[el])
-                                        var tabID = 'reportTab' + oData.id + "_" + filenameCl;
-                                        var fileID = oData.id + "_" + filenameCl;
-                                        //remove directory str, only show filename in label
-                                        var labelText = /[^/]*$/.exec(fileList[el])[0];
-                                        liText += '<li class="' + active + '"><a  class="reportFile" data-toggle="tab" fileid="' + fileID + '" filepath="' + filepath + '" href="#' + tabID + '" visType="' + visType + '" fillsrc="' + link + '" ><i class="fa ' + icon + '"></i>' + labelText + '</a></li>';
-                                    }
-                                });
-                                if (!liText) {
-                                    liText = '<div style="margin:10px;"> No data available</div>';
-                                }
-                                $(nTd).html('<ul class="nav nav-pills nav-stacked">' + liText + '</ul>');
-                            },
-                        }, {
-                            //file content
-                            data: null,
-                            colPercent: "85",
-                            fnCreatedCell: function (nTd, oData) {
-                                var fileList = oData.fileList;
-                                if ($(nTd).is(':empty')) {
-                                    var navTabDiv = "";
-                                    navTabDiv += '<div style="height:inherit;" class="tab-content">';
-                                    var liText = "";
-                                    var active = "";
-                                    $.each(fileList, function (el) {
-                                        var filenameCl = cleanProcessName(fileList[el])
-                                        var tabID = 'reportTab' + oData.id + "_" + filenameCl;
-                                        var active = "";
-                                        if (el == 0) {
-                                            active = 'in active';
-                                        }
-                                        navTabDiv += '<div style="height:100%; width:100%;" id = "' + tabID + '" class = "tab-pane fade fullsize ' + active + '" ></div>';
-                                    });
-                                    navTabDiv += '</div>';
-                                    $(nTd).html(navTabDiv);
-                                } else {
-                                    $.each(fileList, function (el) {
-                                        var filenameCl = cleanProcessName(fileList[el])
-                                        var tabID = 'reportTab' + oData.id + "_" + filenameCl;
-                                        if (!$(nTd).find("div#" + tabID).length) {
-                                            $(nTd).children().append('<div style="height:100%; width:100%;" id = "' + tabID + '" class = "tab-pane fade" ></div>')
-                                        }
-                                    });
-                                }
-                            },
-                        }],
-                        columnsHeader: [{
-                            data: null,
-                            colPercent: "4",
-                            fnCreatedCell: function (nTd, oData) {
-                                $(nTd).html('<span class="info-box-icon" style="height:60px; line-height:60px; width:30px; font-size:18px;  background:rgba(0,0,0,0.2);"><i class="fa fa-folder"></i></span>');
-                            },
-                        }, {
-                            data: null,
-                            fnCreatedCell: function (nTd, oData) {
-                                var gNum = oData.id.split("_")[0].split("-")[1];
-                                var rowID = "outputTa-" + gNum;
-                                var processName = $('#' + rowID + ' > :nth-child(5)').text();
-                                var processID = $('#' + rowID + ' > :nth-child(5)').text();
-                                $(nTd).html('<span  gnum="' + gNum + '" processid="' + processID + '">' + createLabel(processName) + '</span>');
-                            },
-                            colPercent: "37"
-                        }, {
-                            data: null,
-                            colPercent: "39",
-                            fnCreatedCell: function (nTd, oData) {
-                                $(nTd).html('<span>' + createLabel(oData.name) + '</span>');
-                            }
-                        }, {
-                            data: null,
-                            colPercent: "20",
-                            fnCreatedCell: function (nTd, oData) {
-                                var visType = oData.pubWeb
-                                var icon = "fa fa-file-text-o";
-                                var text = visType;
-                                if (visType === "table" || visType === "table-percent") {
-                                    icon = "fa fa-table";
-                                    text = "Table";
-                                } else if (visType === "html") {
-                                    icon = "fa fa-file-code-o";
-                                    text = "HTML";
-                                } else if (visType === "pdf") {
-                                    icon = "fa fa-file-pdf-o";
-                                    text = "PDF";
-                                } else if (visType === "rmarkdown") {
-                                    icon = "fa fa-pie-chart";
-                                    text = "R-Markdown";
-                                } else if (visType === "highcharts") {
-                                    icon = "fa fa-line-chart";
-                                    text = "Charts";
-                                } else if (visType === "debrowser") {
-                                    icon = "glyphicon glyphicon-stats";
-                                    text = "DE-Browser";
-                                }
-                                $(nTd).html('<a data-toggle="tooltip" data-placement="bottom" data-original-title="View"><i class="' + icon + '"></i> ' + text + '</a>');
-                            }
-                        }],
-                        columnsTitle: [{
-                            data: null,
-                            colPercent: "4"
-
-                        }, {
-                            data: null,
-                            fnCreatedCell: function (nTd, oData) {
-                                $(nTd).html('<span>PROCESS</span>');
-                            },
-                            colPercent: "37"
-                        }, {
-                            data: "name",
-                            colPercent: "39",
-                            fnCreatedCell: function (nTd, oData) {
-                                $(nTd).html('<span>PUBLISHED DIRECTORY</span>');
-                            },
-                        }, {
-                            data: null,
-                            colPercent: "20",
-                            fnCreatedCell: function (nTd, oData) {
-                                $(nTd).html('<span>VIEW FORMAT</span>');
-                            }
-                        }],
-                        backgroundcolorenter: "#ced9e3",
-                        backgroundcolorleave: "#ECF0F4",
-                        heightHeader: "60px"
-                    });
+                if (reload){
+                    reloadReportRows();
                 }
+
             }
         });
     });
+
+
+    $('#manualRunModal').on('show.bs.modal', function () {
+        window.sshCheck = false;
+        // check ssh key
+        var profileData= getJobData("job");
+        if (profileData){
+            if (profileData[0]){
+                if (profileData[0].ssh_id){
+                    if (profileData[0].ssh_id != "0"){
+                        window.sshCheck = true;
+                    }
+                }
+            }
+        }
+        if (window.sshCheck){
+            $("#manualRunText").html('<b style="color:blue;">Warning:</b> This is an optional feature for users who want to execute their run manually in the terminal. If you want DolphinNext to execute your run, please close this window and click <b>Start</b>, <b>Resume</b> or <b>Rerun</b> buttons. </br>Otherwise, please choose your <b>Run Type</b> at below and click <b>Get Run Command</b> button. Run command will be created in the box below which is ready to be executed in your machine.')
+            $("#manualRunHelp").html('<b style="color:blue;">* Warning:</b> This command expires after 10 minutes for security purposes. After timeout, you can click <b>Get Run Command</b> button to create new one.</br><b style="color:blue;">* Monitoring:</b> You can check the progress of your run by checking following files: initialrun/initial.log and log.txt.');
+        } else {
+            $("#manualRunText").html('You haven\'t defined SSH-Keys in you run environment. However, you can still execute your run by using terminal. </br>Please choose your <b>Run Type</b> and click <b>Get Run Command</b> button. Run command will be created in the box below which is ready to be executed in your machine.')
+            $("#manualRunHelp").html('<b style="color:blue;">* Warning:</b> This command expires after 10 minutes for security purposes. After timeout, you can click <b>Get Run Command</b> button to create new one.</br><b style="color:blue;">* Monitoring:</b> You can check the progress of your run by checking following files: initialrun/initial.log and log.txt.</br><b style="color:blue;">* Note:</b> If you want DolphinNext to execute your run, please follow <b><a target="_blank" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#ssh-keys">this tutorial</a></b> and add SSH-Keys into your profile.'); 
+        }
+        var checkExistingManualRun = false;
+        if (window.runStatus){
+            if (window.runStatus == "Manual"){
+                checkExistingManualRun = true;
+            }
+        }
+        if (!checkExistingManualRun){
+            $("#manualRunCmd").val("")
+        }
+    });
+
+    $( "#getManualRunCmd" ).on('click', function (e) {
+        var checkType = $("#manuaRunType").val()
+        if (checkType){
+            window["manualRun"] = "true"
+            showLoadingDiv("manuaRunPanel");
+            $("#manualRunCmd").val("");
+            runProjectPipe(runProPipeCall, checkType);
+        }
+    });
+
+    $( "#cpTooltipManRun" ).on('click', function (e) {
+        var copyText = document.getElementById("manualRunCmd");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        document.execCommand("copy");
+    });
+
+
+
 
 
 

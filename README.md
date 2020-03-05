@@ -2,7 +2,7 @@
 
 ### A platform to create reproducible, portable and highly parallel pipelines
 
-[![Build Status](https://api.travis-ci.com/UMMS-Biocore/dolphinnext.svg?branch=master)](https://api.travis-ci.com/UMMS-Biocore/dolphinnext)
+[![Build Status](https://api.travis-ci.com/UMMS-Biocore/dolphinnext.svg?branch=master)](https://api.travis-ci.com/UMMS-Biocore/dolphinnext)[![DOI:10.1101/689539](https://zenodo.org/badge/DOI/10.1101/689539.svg)](https://doi.org/10.1101/689539)
 
 -----
 
@@ -16,7 +16,7 @@
 
 * **Build:** Easily create new pipelines using a drag and drop interface. No need to write commands from scratch, instead reuse existing processes/modules to create new pipelines
 
-* **Run:** Execute pipelines in any host environment. Seamless Amazon Cloud integration to create a cluster (EC2), execute the pipeline and transfer the results to the storage service (S3).
+* **Run:** Execute pipelines in any host environment. Seamless Amazon Cloud and Google Cloud integration to create a cluster (instance), execute the pipeline and transfer the results to the storage services (S3 or GS).
 
 * **Resume:** A continuous checkpoint mechanism keeps track of each step of the running pipeline. Partially completed pipelines can be resumed at any stage even after parameter changes.
 
@@ -63,6 +63,8 @@
 *Quick start guide*, can be reached at https://dolphinnext.readthedocs.io/en/latest/dolphinNext/quick.html
 
 *Complete documentation* is available at https://dolphinnext.readthedocs.io
+
+[*Developer Tutorial*](https://github.com/UMMS-Biocore/dolphinnext-tutorial) is available which explains the basics of DolphinNext. You can use our [website](https://dolphinnext.umassmed.edu/), or easily pull Docker image of Dolphinnext and start creating pipelines in your local server.
 
 
 ## Support

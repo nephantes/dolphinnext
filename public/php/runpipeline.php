@@ -14,7 +14,22 @@ $SHOW_RUN_NEXTFLOWLOG= SHOW_RUN_NEXTFLOWLOG;
 $SHOW_RUN_NEXTFLOWNF= SHOW_RUN_NEXTFLOWNF;
 $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 ?>
+<style type="text/css">
+    #fileContent .multiselect-item.multiselect-filter {
+        text-align: center;
+        width: 100%;
+    }
 
+    #fileContent .multiselect-item.multiselect-filter>.input-group {
+        width: 93%;
+        margin: 5px;
+    }
+
+    #fileContent .multiselect-item.multiselect-filter>.input-group>.input-group-btn {
+        width: 40px;
+    }
+
+</style>
 
 
 <div class="box-header" style=" padding-top:0px;  font-size:large; ">
@@ -32,16 +47,16 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
         <i style="color:grey; font-size:25px; padding-top:12px; margin-left:10px; margin-right:10px;">|</i>
 
         <!--        Save and delete icons-->
-        <button type="submit" id="saveRunIcon" class="btn" name="button" data-backdrop="false" onclick="saveRunIcon()" style=" margin:0px; padding:0px;  ">
+        <button type="submit" id="saveRunIcon" class="btn" name="button" data-backdrop="false" onclick="saveRunIcon()" style="background:none;  margin:0px; padding:0px;  ">
             <a data-toggle="tooltip" data-placement="bottom" data-original-title="Save Run">
                 <i class="fa fa-save" style="font-size: 17px;"></i></a></button>
-        <button type="button" id="downPipeline" class="btn" name="button" onclick="download(createNextflowFile(&quot;run&quot;))" data-backdrop="false" style=" margin:0px; padding:0px;">
+        <button type="button" id="downPipeline" class="btn" name="button" onclick="download(createNextflowFile(&quot;run&quot;))" data-backdrop="false" style=" background:none; margin:0px; padding:0px;">
             <a data-toggle="tooltip" data-placement="bottom" data-original-title="Download Pipeline">
                 <i class="glyphicon glyphicon-save"></i></a></button>
-        <button type="submit" id="copyRun" class="btn" name="button" data-backdrop="false" onclick="duplicateProPipe(&#34;copy&#34;);return false;" style=" margin:0px; padding:0px;">
+        <button type="submit" id="copyRun" class="btn" name="button" data-backdrop="false" onclick="duplicateProPipe(&#34;copy&#34;);return false;" style=" background:none; margin:0px; padding:0px;">
             <a data-toggle="tooltip" data-placement="bottom" data-original-title="Copy Run ">
                 <i class="fa fa-copy" style="font-size: 16px;"></i></a></button>
-        <button type="button" id="delRun" class="btn" name="button" data-backdrop="false" data-toggle="modal" href="#confirmModal" style=" margin:0px; padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Delete Run">
+        <button type="button" id="delRun" class="btn" name="button" data-backdrop="false" data-toggle="modal" href="#confirmModal" style=" margin:0px; background:none; padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Delete Run">
                 <i class="glyphicon glyphicon-trash"></i></a></button>
         <!--        Save and delete icons ends-->
 
@@ -65,6 +80,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <ul class="dropdown-menu" role="menu">
                     <li><a href="#" onclick="checkReadytoRun(&#34;rerun&#34;);return false;">ReRun</a></li>
                     <li><a href="#" onclick="checkReadytoRun(&#34;resumerun&#34;);return false;">Resume</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">(Optional) Manual Run</a></li>
                 </ul>
             </div>
             <div id="completeProPipe" style="display:none; float:right; " class="btn-group">
@@ -75,6 +91,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <ul class="dropdown-menu" role="menu">
                     <li><a href="#" onclick="checkReadytoRun(&#34;rerun&#34;);return false;">ReRun</a></li>
                     <li><a href="#" onclick="checkReadytoRun(&#34;resumerun&#34;);return false;">Resume</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">(Optional) Manual Run</a></li>
                 </ul>
             </div>
             <div id="runningProPipe" style="display:none; float:right; " class="btn-group">
@@ -112,6 +129,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <ul class="dropdown-menu" role="menu">
                     <li><a href="#" onclick="checkReadytoRun(&#34;rerun&#34;);return false;">ReRun</a></li>
                     <li><a href="#" onclick="checkReadytoRun(&#34;resumerun&#34;);return false;">Resume</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">(Optional) Manual Run</a></li>
                 </ul>
             </div>
             <div id="abortedProPipe" style="display:none; float:right; " class="btn-group">
@@ -120,12 +138,34 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                     <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu">
+                    <li><a href="#" onclick="terminateProjectPipe();return false;">Terminate</a></li>
                     <li><a href="#" onclick="checkReadytoRun(&#34;rerun&#34;);return false;">ReRun</a></li>
                     <li><a href="#" onclick="checkReadytoRun(&#34;resumerun&#34;);return false;">Resume</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">(Optional) Manual Run</a></li>
                 </ul>
             </div>
-            <button class="btn btn-success" type="button" id="runProPipe" onclick="runProjectPipe(runProPipeCall,&#34;newrun&#34;);return false;" title="Ready to run pipeline" data-placement="bottom" data-toggle="tooltip" style="display:none; vertical-align:middle;">Ready to Run</button>
-            <button class="btn btn-warning" type="submit" id="statusProPipe" style="display:none; vertical-align:middle;" title="Waiting for input parameters, output directory and selection of active environment (if s3 path is defined then waiting for the amazon keys)" data-placement="bottom" data-toggle="tooltip">Waiting</button>
+            <div id="manualProPipe" style="display:none; float:right; " class="btn-group">
+                <button class="btn bg-purple-active color-palette" type="button" id="manualProPipeBut" data-toggle="modal" href="#manualRunModal">Manual Run</button>
+                <button type="button" class="btn bg-purple-active color-palette dropdown-toggle" data-toggle="dropdown" aria-expanded="true">
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a href="#" onclick="checkReadytoRun(&#34;rerun&#34;);return false;">ReRun</a></li>
+                    <li><a href="#" onclick="checkReadytoRun(&#34;resumerun&#34;);return false;">Resume</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">Manual Run</a></li>
+                </ul>
+            </div>
+            <div id="runProPipe" style="display:none; float:right; " class="btn-group">
+                <button class="btn btn-success" type="button" id="runProPipeBut" onclick="runProjectPipe(runProPipeCall,&#34;newrun&#34;);return false;"><i class="fa fa-play" style=""></i> Run</button>
+                <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-expanded="true">
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a href="#" onclick="runProjectPipe(runProPipeCall,&#34;newrun&#34;);return false;">Start</a></li>
+                    <li><a data-toggle="modal" href="#manualRunModal">(Optional) Manual Run</a></li>
+                </ul>
+            </div>
+            <button class="btn btn-warning" type="submit" id="statusProPipe" style="display:none; vertical-align:middle;" data-original-title="Waiting for input parameters, output directory and selection of active environment (if s3 path is defined then waiting for the amazon keys)" data-placement="bottom" data-toggle="tooltip">Waiting</button>
         </div>
     </div>
 </div>
@@ -133,6 +173,9 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 <div style="padding-left:16px; padding-right:16px; padding-bottom:20px; " id="desPipeline">
     <div class="row" id="creatorInfoPip" style="font-size:12px; display:none;"> Created by <span id="ownUserNamePip">admin</span> on <span id="datecreatedPip">Jan. 26, 2016 04:12</span> • Last edited on <span class="lasteditedPip">Feb. 8, 2017 12:15</span>
     </div>
+</div>
+
+<div id="warningSection">
 </div>
 
 <div id="runTabSection">
@@ -155,7 +198,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
             <div><textarea id="runSum" rows="3" placeholder="Enter run description here.." style="min-width: 100%; max-width: 100%; border-color:lightgrey;"></textarea></div>
             <div id="runSettings" style="padding-top:7px;">
                 <div>
-                    <div class="row">
+                    <div class="row" id="rOut_dirDiv">
                         <div class="col-md-12">
                             <div class="form-group">
                                 <label>Work Directory (Full path)</label>
@@ -177,9 +220,21 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                     </div>
                     <div class="row">
                         <div class="col-md-12">
+                            <div id="mRunGoogKeyDiv" class="form-group" style="display:none;">
+                                <label>Select Google Keys <span><a data-toggle="tooltip" data-placement="bottom" title="Google Keys to connect and access your Google storage"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
+                                <div style="padding-bottom:15px;">
+                                    <select id="mRunGoogKey" class="fbtn btn-default form-control" name="google_cre_id">
+                                        <option value="" disabled selected>Select Google Keys </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
                             <div class="form-group">
                                 <label>Run Environment </label>
-                                <button type="button" class="btn" data-backdrop="false" onclick="refreshEnv()" style="padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Refresh Environments"><i class="fa fa-refresh" style="font-size: 14px;"></i></a></button>
+                                <button type="button" class="btn" data-backdrop="false" onclick="refreshEnv()" style="background:none; padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Refresh Environments"><i class="fa fa-refresh" style="font-size: 14px;"></i></a></button>
                                 <select id="chooseEnv" style="width: 100%;" class="fbtn btn-default form-control" name="runEnv">
                                     <option value="" disabled selected>Choose environment </option>
                                 </select>
@@ -301,13 +356,13 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 
         <div id="advancedTab" class="tab-pane fade">
             <div id="advOpt" class="row" style="margin-top:10px; margin-bottom:2px;">
-                <div class="col-md-12">
+                <div class="col-md-12" id="runCmdDiv">
                     <div class="form-group">
                         <label>Run Command <span><a data-toggle="tooltip" data-placement="bottom" title="You may run the command or commands (by seperating each command with && sign) before the nextflow job starts. (eg. source /etc/bashrc && module load java/1.8.0_31 && module load singularity/singularity-2.4)"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <textarea id="runCmd" rows="1" name="runCmd" placeholder="Enter commands here.." style="min-width: 100%; max-width: 100%; border-color:lightgrey;"></textarea>
                     </div>
                 </div>
-                <div class="col-md-12">
+                <div class="col-md-12" id="publishDirHide">
                     <div>
                         <label><input type="checkbox" id="publish_dir_check" name="publish_dir_check" data-toggle="collapse" data-target="#publishDirDiv"> Publish Directory</input> <span><a data-toggle="tooltip" data-placement="bottom" title="You may enter new publish directory (default: work directory) by clicking this item and entering path below.(eg. s3://yourbucket/test)"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                     </div>
@@ -336,11 +391,11 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td><input id="job_queue" name="job_queue" class="form-control" type="text" value="short"></td>
-                                        <td><input id="job_memory" class="form-control" type="text" name="job_memory" value="32"></td>
-                                        <td><input id="job_cpu" name="job_cpu" class="form-control" type="text" value="1"></td>
-                                        <td><input id="job_time" name="job_time" class="form-control" type="text" value="100"></td>
-                                        <td><input id="job_clu_opt" name="job_clu_opt" class="form-control" type="text" value=""></td>
+                                        <td><input id="job_queue" name="job_queue" class="form-control execqueue" type="text" value="short"></td>
+                                        <td><input id="job_memory" class="form-control execmemory" type="text" name="job_memory" value="32"></td>
+                                        <td><input id="job_cpu" name="job_cpu" class="form-control execcpu" type="text" value="1"></td>
+                                        <td><input id="job_time" name="job_time" class="form-control exectime" type="text" value="100"></td>
+                                        <td><input id="job_clu_opt" name="job_clu_opt" class="form-control execopt" type="text" value=""></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -368,7 +423,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                         </div>
                     </div>
                 </div>
-                <div class="col-md-12">
+                <div class="col-md-12" id="intermeDelDiv">
                     <div class="form-group">
                         <label> <input type="checkbox" id="intermeDel" name="interDelete" value="interDel" checked> Delete intermadiate files after run</input></label>
                     </div>
@@ -398,7 +453,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>Permissions to View</label>
-                        <select id="perms" style="width:100%;" class="fbtn btn-default form-control" name="perms">
+                        <select id="permsRun" style="width:100%;" class="fbtn btn-default form-control permscheck" name="perms">
                             <option value="3" selected>Only me </option>
                             <option value="15">Only my group</option>
                         </select>
@@ -407,8 +462,8 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <div class="col-md-6">
                     <div class="form-group">
                         <label>Group Selection </label>
-                        <select id="groupSel" style="width:100%;" class="fbtn btn-default form-control" name="group_id">
-                            <option value="" disabled selected>Choose group </option>
+                        <select id="groupSelRun" style="width:100%;" class="fbtn btn-default form-control permscheck" name="group_id">
+                            <option value="" selected>Choose group </option>
                         </select>
                     </div>
                 </div>
@@ -470,9 +525,11 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                     <div style="width:110px; float:right;">
                         <select id="runVerReport" class="fbtn btn-default form-control mRunVerReportChange"></select>
                     </div>
+                    <div style="float:right;">
+                        <button id="refreshVerReport" type="button" class="btn" data-backdrop="false" style="background:none; padding-right:10px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Reload Report Section"><i class="fa fa-refresh" style="font-size: 15px;"></i></a></button>
+                    </div>
                     <div class="form-group">
-                        <h5 id="runTitleReport">Run Attempt-1:</h5>
-
+                        <h5 id="runTitleReport">Run Report 1</h5>
                     </div>
                     <div id="reportRows" style="margin-top:25px;"></div>
 
@@ -695,7 +752,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="savefile" data-clickedrow="">Save File</button>
+                <button type="button" class="btn btn-primary" id="savefile" data-clickedrow="">Save</button>
             </div>
         </div>
     </div>
@@ -808,8 +865,8 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                 <div role="tabpanel">
                     <!-- Nav tabs -->
                     <ul class="nav nav-tabs" role="tablist">
-                        <li id="hostFileTab" class="active"><a class="nav-item" data-toggle="tab" href="#hostFiles">Host Files</a></li>
-                        <li id="geoFileTab"><a class="nav-item" data-toggle="tab" href="#geoFiles">GEO Files</a></li>
+                        <li id="hostFileTab" class="active"><a class="nav-item" data-toggle="tab" href="#hostFiles">Remote Files</a></li>
+                        <li id="geoFileTab"><a class="nav-item" data-toggle="tab" href="#geoFiles">GEO/NCBI Files</a></li>
                         </li>
                         <li id="uploadFileTab"><a class="nav-item" data-toggle="tab" href="#uploadFiles">Upload Files</a></li>
                         </li>
@@ -827,24 +884,65 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">1. File Directory (Full Path) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter the full path of the directory in your host. eg. /share/data/umw_biocore/ genome_data/mousetest/mm10/gz"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                <div class="form-group" id="mRunGoogKeyGSDiv" style="display:none; ">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:45px; color:#a7a218;">Select Google Keys (for GS) <span><a data-toggle="tooltip" data-placement="bottom" title="Google Keys to access your GS storage"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
                                     <div class="col-sm-7">
-                                        <input type="text" class="form-control" id="file_dir" name="file_dir" value="">
-                                    </div>
-                                    <div class="col-sm-2">
-                                        <button id="viewDirBut" type="button" class="btn btn-primary">View Directory <i class='fa fa-search'></i></button>
+                                        <select id="mRunGoogKeyGS" class="fbtn btn-default form-control" name="google_cre_id">
+                                            <option value="" disabled selected>Select Google Keys </option>
+                                        </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group" style="margin-bottom:10px;" id="file_dir_div">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">1. File Location <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter the location of your files and click search button."><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" placeholder="Search" id="file_dir" name="file_dir" value="">
+                                            <div class="input-group-btn">
+                                                <button class="btn btn-primary" id="viewDirBut" type="button">
+                                                    <span class="glyphicon glyphicon-search"></span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="col-sm-3"></div>
+                                        <div class="col-sm-9">
+                                            <a class="small" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/quick.html#adding-files" target="_blank">Need help?</a> <span class="small">
+                                                Full path of a directory: eg.<code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this, 'file_dir')">/share/data/umw_biocore/genome_data/mousetest/mm10/gz</code>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="col-sm-3"></div>
+                                        <div class="col-sm-9">
+                                            <span class="small">
+                                                Web link: eg.<code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this, 'file_dir')">https://galaxyweb.umassmed.edu/pub/dnext_data/test/reads</code>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="col-sm-3"></div>
+                                        <div class="col-sm-9">
+                                            <span style="font-size:80%;">
+                                                Amazon (S3) or Google (GS) Bucket: eg.<code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this, 'file_dir') ">s3://biocore/fastq</code> or <code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this, 'file_dir')">gs://biocore/fastq</code>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div id="viewDirDiv" class="form-group" style="margin-top:10px;">
                                     <div class="col-sm-3"></div>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="viewDir" class="form-control" size="5" style="display:none;"></select>
+                                        <span id="viewDirInfo" style="font-size:80%;">
+                                            Couldn't find your files? You can navigate through folders by double-clicking above.
+                                        </span>
                                     </div>
                                 </div>
+
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px;">2. File Type <span><a data-toggle="tooltip" data-placement="bottom" title="Please choose your file type"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="file_type" class="fbtn btn-default form-control" name="file_type">
                                             <option value="fastq" selected>FASTQ</option>
                                             <option value="bam">BAM</option>
@@ -858,7 +956,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                                 </div>
                                 <div class="form-group">
                                     <label for="collection_type" class="col-sm-3 control-label text-left" style="padding-left:30px;">3. Collection Type <span><a data-toggle="tooltip" data-placement="bottom" title="For paired-end reads please choose 'paired list' and for single-end reads or any list of files choose 'single/list' option."><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="collection_type" class="fbtn btn-default form-control" name="collection_type">
                                             <option value="" disabled selected>Choose Collection Type</option>
                                             <option value="single">Single/List</option>
@@ -931,6 +1029,7 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                                                     <th scope="col">Directory</th>
                                                     <th scope="col" style="width:20px;">Remove</th>
                                                     <th scope="col">Amz_key</th>
+                                                    <th scope="col">Goog_key</th>
                                                 </tr>
                                             </thead>
                                             <tbody></tbody>
@@ -939,29 +1038,43 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                                 </div>
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px;">5. Collection Name <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter name of collection to recall all of the entered files later"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="collection_id" class="fbtn btn-default form-control" name="collection_id">
                                             <option value="" disabled selected>Type New Collection Name or Choose to Add into Existing Collection</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">6. Local Archive Directory (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter full path of the directory where all of the entered files will be published after merging/renaming operation eg. /home/test/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                <div class="form-group" id="archive_dir_div">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Local Archive Directory (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter full path of the directory where all of the entered files will be published after merging/renaming operation eg. /home/test/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
                                         <input type="text" class="form-control" id="archive_dir" name="archive_dir">
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">7. Amazon S3 Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Amazon bucket where all of the entered files will be published after merging/renaming operation eg. s3://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                <div class="form-group" id="mArchAmzS3Div">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Amazon S3 Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Amazon bucket where all of the entered files will be published after merging/renaming operation eg. s3://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
                                         <input type="text" class="form-control" id="s3_archive_dir" name="s3_archive_dir">
+                                    </div>
+                                </div>
+                                <div class="form-group" id="mArchGoogGSDiv">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Google Storage Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Google Storage bucket where all of the entered files will be published after merging/renaming operation eg. gs://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="gs_archive_dir" name="gs_archive_dir">
                                     </div>
                                 </div>
                                 <div class="form-group" id="mArchAmzKeyS3Div" style="display:none; ">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:45px; color:#a7a218;">Select Amazon Keys(S3 Archive) <span><a data-toggle="tooltip" data-placement="bottom" title="Amazon Keys to access your S3 archive directory"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="mArchAmzKeyS3" class="fbtn btn-default form-control" name="amazon_cre_id">
                                             <option value="" disabled selected>Select Amazon Keys </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="mArchGoogKeyGSDiv" style="display:none; ">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:45px; color:#a7a218;">Select Google Keys(GS Archive) <span><a data-toggle="tooltip" data-placement="bottom" title="Google Keys to access your GS archive directory"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
+                                    <div class="col-sm-8">
+                                        <select id="mArchGoogKeyGS" class="fbtn btn-default form-control" name="google_cre_id">
+                                            <option value="" disabled selected>Select Google Keys </option>
                                         </select>
                                     </div>
                                 </div>
@@ -973,13 +1086,26 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                             <form class="form-horizontal">
                                 <div class="form-group" id="viewGeoButDiv">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px;">1. GSE/GSM/SRR ID <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter GSE, GSM or SRR id "><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
-                                        <input type="text" class="form-control" id="geo_id" name="geo_id" value="">
+                                    <div class="col-sm-8">
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" placeholder="Search GEO/NCBI Data" id="geo_id" name="geo_id" value="">
+                                            <div class="input-group-btn">
+                                                <button class="btn btn-primary" id="viewGeoBut" type="button">
+                                                    <span class="glyphicon glyphicon-search"></span>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div class="col-sm-2">
-                                        <button id="viewGeoBut" type="button" class="btn btn-primary">Search Geo Data <i class='fa fa-search'></i></button>
+                                    <div>
+                                        <div class="col-sm-3"></div>
+                                        <div class="col-sm-9">
+                                            <a class="small" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/quick.html#adding-files" target="_blank">Need help?</a> <span class="small">
+                                                eg.<code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this,'geo_id')">GSM1331276</code>, <code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this,'geo_id')">GSE55190</code>, <code style="color:#333; cursor:pointer;" onclick="fillFileSearchBox(this,'geo_id')">SRR10095965</code>
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
+
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px;">2. Searched GEO Files <span><a data-toggle="tooltip" data-placement="bottom" title="Click 'select' or 'select all' button to add files to a collection"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
                                 </div>
@@ -1026,29 +1152,43 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 
                                 <div class="form-group">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px;">4. Collection Name <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter name of collection to recall all of the entered files later"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="collection_id_geo" class="fbtn btn-default form-control" name="collection_id">
                                             <option value="" disabled selected>Type New Collection Name or Choose to Add into Existing Collection</option>
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">5. Local Archive Directory (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter full path of the directory where all of the entered files will be published after merging/renaming operation eg. /home/test/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                <div class="form-group" id="archive_dir_geo_div">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Local Archive Directory (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter full path of the directory where all of the entered files will be published after merging/renaming operation eg. /home/test/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
                                         <input type="text" class="form-control" id="archive_dir_geo" name="archive_dir">
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">6. Amazon S3 Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Amazon bucket where all of the entered files will be published after merging/renaming operation eg. s3://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
-                                    <div class="col-sm-7">
+                                <div class="form-group" id="mArchAmzS3Div_GEO">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Amazon S3 Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Amazon bucket where all of the entered files will be published after merging/renaming operation eg. s3://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
                                         <input type="text" class="form-control" id="s3_archive_dir_geo" name="s3_archive_dir">
+                                    </div>
+                                </div>
+                                <div class="form-group" id="mArchGoogGSDiv_GEO">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px;">Google Storage Backup (optional) <span><a data-toggle="tooltip" data-placement="bottom" title="Please specify your Google Cloud bucket where all of the entered files will be published after merging/renaming operation eg. gs://yourbucket/archive"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                    <div class="col-sm-8">
+                                        <input type="text" class="form-control" id="gs_archive_dir_geo" name="gs_archive_dir">
                                     </div>
                                 </div>
                                 <div class="form-group" id="mArchAmzKeyS3Div_GEO" style="display:none; ">
                                     <label class="col-sm-3 control-label text-left" style="padding-left:30px; color:#a7a218;">Select Amazon Keys(S3 Archive) <span><a data-toggle="tooltip" data-placement="bottom" title="Amazon Keys to access your S3 archive directory"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
-                                    <div class="col-sm-7">
+                                    <div class="col-sm-8">
                                         <select id="mArchAmzKeyS3_GEO" class="fbtn btn-default form-control" name="amazon_cre_id">
                                             <option value="" disabled selected>Select Amazon Keys </option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="mArchGoogKeyGSDiv_GEO" style="display:none; ">
+                                    <label class="col-sm-3 control-label text-left" style="padding-left:30px; color:#a7a218;">Select Google Keys(GS Archive) <span><a data-toggle="tooltip" data-placement="bottom" title="Google Keys to access your GS archive directory"><i class='glyphicon glyphicon-info-sign' style="color:#ffbb33;"></i></a></span></label>
+                                    <div class="col-sm-8">
+                                        <select id="mArchGoogKeyGS_GEO" class="fbtn btn-default form-control" name="google_cre_id">
+                                            <option value="" disabled selected>Select Google Keys </option>
                                         </select>
                                     </div>
                                 </div>
@@ -1058,14 +1198,14 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                         <div role="tabpanel" class="tab-pane" id="uploadFiles">
                             </br>
                             <form class="form-horizontal">
-                                <div class="form-group">
-                                    <label class="col-sm-4 control-label text-left" style="padding-left:30px;">1. Target Directory in the Host (Full Path) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter the full path of the directory in your host where all uploaded files will be transfered. eg. /share/data/umw_biocore/ genome_data/mousetest/mm10/gz"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
+                                <div class="form-group" id="target_dir_div">
+                                    <label class="col-sm-4 control-label text-left" style="padding-left:30px;">Target Directory in the Host (Full Path) <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter the full path of the directory in your host where all uploaded files will be transfered. eg. /share/data/umw_biocore/ genome_data/mousetest/mm10/gz"><i class='glyphicon glyphicon-info-sign'></i></a></span> </label>
                                     <div class="col-sm-8">
                                         <input type="text" class="form-control" id="target_dir" name="target_dir" value="">
                                     </div>
                                 </div>
                                 <div class="form-group">
-                                    <label class="col-sm-12 control-label text-left" style="padding-left:30px;">2. Add files to upload and click the 'Start Upload' button. First, all files will be uploaded and then transfered to target directory in your run environment.</label>
+                                    <label class="col-sm-12 control-label text-left" style="padding-left:30px;">Add files to upload and click the 'Start Upload' button. First, all files will be uploaded and then transfered to target directory in your run environment.</label>
                                 </div>
                             </form>
                             <div id="pluploader">
@@ -1073,13 +1213,13 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
                             </div>
                             <div class="form-group">
                                 <button type="button" class="btn btn-default pull-right" style="margin-right:8px;" data-toggle="collapse" data-target="#pluploaderLogDiv">View Log</button>
-                                <button type="button" class="btn btn-default pull-right" style="margin-right:8px;" id="pluploaderReset" >Reset</button>
-<!--                                <button type="button" class="btn btn-default pull-right" style="margin-right:8px;" id="pluploaderStop" >Stop</button>-->
+                                <button type="button" class="btn btn-default pull-right" style="margin-right:8px;" id="pluploaderReset">Reset</button>
+                                <!--                                <button type="button" class="btn btn-default pull-right" style="margin-right:8px;" id="pluploaderStop" >Stop</button>-->
                             </div>
                             <div class="form-group">
-                            <div id="pluploaderLogDiv" class="col-sm-12 collapse">
-                                <pre id="pluploaderLog" style="height:250px;"></pre>
-                            </div>
+                                <div id="pluploaderLogDiv" class="col-sm-12 collapse">
+                                    <pre id="pluploaderLog" style="height:250px;"></pre>
+                                </div>
                             </div>
                             </br>
                             <form class="form-horizontal" id="uploadSucDiv" style="display:none;">
@@ -1126,6 +1266,55 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 </div>
 <!--Info Modal ENDs-->
 
+<!--errGeoModal Starts-->
+<div id="errGeoModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Information</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <div id="errGeoModalDupDiv">
+                        <div class="form-group">
+                            <div class="col-sm-12">
+                                <div id="errGeoModalDupText">Dup Text</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-12">
+                                <div class="col-sm-12">
+                                    <textarea rows="3" class="form-control" style="resize:none;" readonly id="errGeoModalDupList"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="errGeoModalErrDiv">
+                        <div class="form-group">
+                            <div class="col-sm-12">
+                                <div id="errGeoModalErrText">Err Text</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-12">
+                                <div class="col-sm-12">
+                                    <textarea rows="3" class="form-control" style="resize:none;" readonly id="errGeoModalErrList"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" id="retry_geo_search" data-dismiss="modal">Retry</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--errGeoModal ENDs-->
+
 <!--New Collection Modal Starts-->
 <div id="newCollectionModal" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
@@ -1160,8 +1349,6 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
 </div>
 <!--New Collection Modal ENDs-->
 
-
-
 <!--Confirm Modal-->
 <div id="confirmModal" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
@@ -1179,3 +1366,65 @@ $SHOW_RUN_NEXTFLOWCONFIG= SHOW_RUN_NEXTFLOWCONFIG;
     </div>
 </div>
 <!--Confirm Modal Ends-->
+
+<!--manualRunModal-->
+<div id="manualRunModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Manual Run Console</h4>
+            </div>
+            <div class="modal-body" style="padding:20px;">
+                <div class="row">
+                    <div class="form-group col-sm-12">
+                        <p id="manualRunText"></p>
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-body" id="manuaRunPanel">
+                        <div class="form-group col-sm-12" style="margin-bottom:20px;">
+                            <label class="col-sm-3 control-label text-left" style="padding-left:70px; padding-top:5px;">Run Type: </label>
+                            <div class="col-sm-4">
+                                <select id="manuaRunType" class="form-control">
+                                    <option value="rerun">Fresh Start</option>
+                                    <option value="resumerun">Resume</option>
+                                </select>
+                            </div>
+                            <div class="col-sm-1" style="padding-top:5px;">
+                                <span><i class='fa fa-long-arrow-right'></i></span>
+
+                            </div>
+                            <div class="col-sm-4">
+                                <button id="getManualRunCmd" type="button" class="btn btn-primary">Get Run Command</button>
+                            </div>
+                        </div>
+                        <div class="form-group col-sm-12">
+                            <p class="col-sm-12 control-label text-left" style="padding:0px; margin:0px;">Run Command: </p>
+                            <div class="col-sm-11" style="padding:0px; margin:0px;">
+                                <textarea readonly rows="4" class="form-control" style="resize:none; " id="manualRunCmd"></textarea>
+                            </div>
+                            <div class="col-sm-1" style="margin-top:20px; padding-right:10px;">
+                                <button id="cpTooltipManRun" type="button" class="btn btn-default form-control" data-backdrop="false">
+                                    <a data-toggle="tooltip" data-placement="bottom" data-original-title="Copy to Clipboard">
+                                        <span><i class="glyphicon glyphicon-copy"></i></span></a>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="form-group col-sm-12">
+                        <p id="manualRunHelp" style="font-size:13px;"></p>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!--manualRunModal Ends-->

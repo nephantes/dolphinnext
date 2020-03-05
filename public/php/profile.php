@@ -1,19 +1,31 @@
 <?php
-    if (!isset($_SESSION) || !is_array($_SESSION)) session_start();
-    $ownerID = isset($_SESSION['ownerID']) ? $_SESSION['ownerID'] : "";
-    $name = isset($_SESSION['name']) ? $_SESSION['name'] : "";
-    $admin_id = isset($_SESSION['admin_id']) ? $_SESSION['admin_id'] : "";
-    $role = isset($_SESSION['role']) ? $_SESSION['role'] : "";
-    if ($ownerID != ''){$login = 1;} 
-    else { $login = 0;}
-    session_write_close();
+if (!isset($_SESSION) || !is_array($_SESSION)) session_start();
+$ownerID = isset($_SESSION['ownerID']) ? $_SESSION['ownerID'] : "";
+$name = isset($_SESSION['name']) ? $_SESSION['name'] : "";
+$admin_id = isset($_SESSION['admin_id']) ? $_SESSION['admin_id'] : "";
+$role = isset($_SESSION['role']) ? $_SESSION['role'] : "";
+if ($ownerID != ''){$login = 1;} 
+else { $login = 0;}
+session_write_close();
 
-    require_once(__DIR__."/../../config/config.php");
-    $SHOW_AMAZON_KEYS= SHOW_AMAZON_KEYS;
-    $SHOW_SSH_KEYS=SHOW_SSH_KEYS;
-    $SHOW_GROUPS=SHOW_GROUPS;
-    $SHOW_GIT=SHOW_GITHUB;
+require_once(__DIR__."/../../config/config.php");
+$SHOW_GOOGLE_KEYS= SHOW_GOOGLE_KEYS;
+$SHOW_AMAZON_KEYS= SHOW_AMAZON_KEYS;
+$SHOW_SSH_KEYS=SHOW_SSH_KEYS;
+$SHOW_GROUPS=SHOW_GROUPS;
+$SHOW_GIT=SHOW_GITHUB;
+$GOOGPATH=GOOGPATH;
 ?>
+
+<style>
+    .dropzone {
+        /*height: 70px;*/
+        /*min-height: 0px !important;*/
+        border: 1px solid #ccc;
+    }
+
+</style>
+
 
 <section class="content" style="max-width: 1500px; ">
     <h2 class="page-header">User Profile</h2>
@@ -24,23 +36,26 @@
                 <ul class="nav nav-tabs">
                     <li class="active"><a href="#runEnvDiv" data-toggle="tab" aria-expanded="true">Run Environments</a></li>
                     <?php
-                        if ($login == 1 && ($SHOW_GROUPS != false || !empty($admin_id) || $role == "admin")){
-                            echo '<li class=""><a href="#groups" data-toggle="tab" aria-expanded="false">Groups</a></li>';
-                        }
-                        if ($login == 1 && ($SHOW_SSH_KEYS != false || !empty($admin_id) || $role == "admin")){
-                            echo '<li class=""><a href="#sshKeys" data-toggle="tab" aria-expanded="false">SSH Keys</a></li>';
-                        }
-                        if ($login == 1 && ($SHOW_AMAZON_KEYS != false || !empty($admin_id) || $role == "admin")){
-                            echo '<li class=""><a href="#amazonKeys" data-toggle="tab" aria-expanded="false">Amazon Keys</a></li>';
-                        }
-                        if ($login == 1 && ($SHOW_GIT != false || !empty($admin_id) || $role == "admin")){
-                            echo '<li class=""><a href="#github" data-toggle="tab" aria-expanded="false">GitHub</a></li>';
-                        }
-                        echo '<li class=""><a href="#changePass" data-toggle="tab" aria-expanded="false">Change Password</a></li>';
-                        if ($login == 1 && $role == "admin"){
-                            echo '<li id="adminTabBut"  class=""><a href="#adminTab" data-toggle="tab" aria-expanded="false">Admin</a></li>';
-                        } 
-                        ?>
+                    if ($login == 1 && ($SHOW_GROUPS != false || !empty($admin_id) || $role == "admin")){
+                        echo '<li class=""><a href="#groups" data-toggle="tab" aria-expanded="false">Groups</a></li>';
+                    }
+                    if ($login == 1 && ($SHOW_SSH_KEYS != false || !empty($admin_id) || $role == "admin")){
+                        echo '<li class=""><a href="#sshKeys" data-toggle="tab" aria-expanded="false">SSH Keys</a></li>';
+                    }
+                    if ($login == 1 && ($SHOW_AMAZON_KEYS != false || !empty($admin_id) || $role == "admin")){
+                        echo '<li class=""><a href="#amazonKeys" data-toggle="tab" aria-expanded="false">Amazon Keys</a></li>';
+                    }
+                    if ($login == 1 && !empty($GOOGPATH) && ($SHOW_GOOGLE_KEYS != false || !empty($admin_id) || $role == "admin")){
+                        echo '<li class=""><a href="#googleKeys" data-toggle="tab" aria-expanded="false">Google Keys</a></li>';
+                    }
+                    if ($login == 1 && ($SHOW_GIT != false || !empty($admin_id) || $role == "admin")){
+                        echo '<li class=""><a href="#github" data-toggle="tab" aria-expanded="false">GitHub</a></li>';
+                    }
+                    echo '<li class=""><a href="#changePass" data-toggle="tab" aria-expanded="false">Change Password</a></li>';
+                    if ($login == 1 && $role == "admin"){
+                        echo '<li id="adminTabBut"  class=""><a href="#adminTab" data-toggle="tab" aria-expanded="false">Admin</a></li>';
+                    } 
+                    ?>
                 </ul>
                 <div class="tab-content">
                     <div class="tab-pane active" id="runEnvDiv">
@@ -67,14 +82,14 @@
                             </div>
                         </div>
                         <?php
-                            if ($login == 1 && $role == "admin"){
-                        echo '<div class="panel panel-default" id="publicprofilepanel">
+                        if ($login == 1 && $role == "admin"){
+                            echo '<div class="panel panel-default" id="publicprofilepanel">
                                 <div class="panel-heading clearfix">
                                     <div class="pull-right">
                                         <button type="button" class="btn btn-primary btn-sm" id="addPublicProfile" data-toggle="modal" data-target="#profilemodal">Add Public Profile</button>
                                     </div>
                                     <div class="pull-left">
-                                        <h5><i class="fa fa-user " style="margin-left:0px; margin-right:0px;"></i> Public Run Environments</h5>
+                                        <h5><i class="fa fa-user " style="margin-left:0px; margin-right:0px;"></i> Public Run Environment Templates</h5>
                                     </div>
                                 </div>
                                 <div class="panel-body">
@@ -90,7 +105,7 @@
                                     </table>
                                 </div>
                             </div>';
-                            }
+                        }
                         ?>
 
                     </div>
@@ -174,8 +189,33 @@
                     </div>
                     <!-- /.tab-pane ends -->
                     <!-- /.tab-pane starts -->
+                    <div class="tab-pane" id="googleKeys">
+                        <div class="panel panel-default" id="googleKeystablepanel">
+                            <div class="panel-heading clearfix">
+                                <div class="pull-right">
+                                    <button type="button" class="btn btn-primary btn-sm" id="addGoogleKey" data-toggle="modal" data-target="#googleKeysModal">Add Google Key</button>
+                                </div>
+                                <div class="pull-left">
+                                    <h5><i class="fa fa-group " style="margin-left:0px; margin-right:0px;"></i> Google Keys</h5>
+                                </div>
+                            </div>
+                            <div class="panel-body">
+                                <table id="googleKeyTable" class="table table-striped table-bordered" cellspacing="0" width="100%">
+                                    <thead>
+                                        <tr>
+                                            <th>Google Key Name</th>
+                                            <th>Created on</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- /.tab-pane ends -->
+                    <!-- /.tab-pane starts -->
                     <div class="tab-pane" id="github">
-                        <div class="panel panel-default" >
+                        <div class="panel panel-default">
                             <div class="panel-heading clearfix">
                                 <div class="pull-right">
                                     <button type="button" class="btn btn-primary btn-sm" id="addGithub" data-toggle="modal" data-target="#githubModal">Add GitHub Account</button>
@@ -246,7 +286,7 @@
                     <!-- /.tab-pane ends -->
                     <!-- /.tab-pane starts -->
                     <?php 
-                        if ($login == 1 && $role == "admin"){
+                    if ($login == 1 && $role == "admin"){
                         echo '<div class="tab-pane" id="adminTab">
                             <div class="panel panel-default">
                                 <div class="panel-heading clearfix">
@@ -261,6 +301,7 @@
                                     <table id="AdminUserTable" class="table table-striped table-bordered" cellspacing="0" width="100%">
                                         <thead>
                                             <tr>
+                                                <th>ID</th>
                                                 <th>Name</th>
                                                 <th>Username</th>
                                                 <th>E-mail</th>
@@ -273,10 +314,9 @@
                                         </thead>
                                     </table>
                                 </div>
-                            </div>
-                        </div>';
-                        }
-                        ?>
+                            </div>';
+                    }
+                    ?>
 
 
                 </div>
@@ -321,7 +361,10 @@
                             <select style="width:150px" id="chooseEnv" class="fbtn btn-default form-control" name="runEnv">
                                 <option value="" disabled selected>Select environment </option>
                                 <option value="cluster">Host</option>
-                                <option value="amazon">Amazon</option>
+                                <option value="amazon">Amazon Web Services</option>
+                                <?php if (!empty($GOOGPATH)){
+    echo '<option value="google">Google Cloud</option>';
+} ?>
                             </select>
                         </div>
                     </div>
@@ -367,20 +410,46 @@
                             </select>
                         </div>
                     </div>
+                    <div id="mEnvGoogKeyDiv" class="form-group" style="display:none">
+                        <label for="" class="col-sm-3 control-label">Google Keys<span><a data-toggle="tooltip" data-placement="bottom" title="Keys that are saved in Google keys tab and to be used while connecting to Google Cloud"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9">
+                            <select id="mEnvGoogKey" class="fbtn btn-default form-control" name="google_cre_id">
+                                <option value="" disabled selected>Select Google Keys </option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="mEnvZoneDiv" class="form-group" style="display:none">
+                        <label class="col-sm-3 control-label">Zone</label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="mEnvZone" name="zone">
+                        </div>
+                    </div>
                     <div id="mEnvInsTypeDiv" class="form-group" style="display:none">
-                        <label for="mEnvInsType" class="col-sm-3 control-label">Instance Type</label>
+                        <label for="mEnvInsType" class="col-sm-3 control-label">Instance Type <span><a data-toggle="tooltip" data-placement="bottom" title=" Amazon EC2 or Google Cloud instance type that comprise varying combinations of CPU, memory, storage, and networking capacity (eg. m3.xlarge)."><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" id="mEnvInsType" name="instance_type">
                         </div>
                     </div>
                     <div id="mEnvImageIdDiv" class="form-group" style="display:none">
-                        <label for="mEnvImageId" class="col-sm-3 control-label">Image Id</label>
+                        <label for="mEnvImageId" class="col-sm-3 control-label">Image Id <span><a data-toggle="tooltip" data-placement="bottom" title=" Virtual machine ID"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" id="mEnvImageId" name="image_id">
                         </div>
                     </div>
+                    <div id="mDefWorkDirDiv" class="form-group" style="display:none">
+                        <label for="mDefWorkDir" class="col-sm-3 control-label">Default Working Directory <span><a data-toggle="tooltip" data-placement="bottom" title="Default directory where dolphinnext runs will be executed. It is mandatory for google cloud. e.g. /data/dnext."><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="mDefWorkDir" name="def_workdir">
+                        </div>
+                    </div>
+                    <div id="mDefPublishDirDiv" class="form-group" style="display:none">
+                        <label for="mDefPublishDir" class="col-sm-3 control-label">Default Bucket Location for Publishing <span><a data-toggle="tooltip" data-placement="bottom" title="Default bucket location where dolphinnext reports will be published. It is mandatory for google cloud and you can always edit this path in the run page. e.g. s3://bucket/dnext or gs://bucket/dnext"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9">
+                            <input style="margin-top:10px;" type="text" class="form-control" id="mDefPublishDir" name="def_publishdir">
+                        </div>
+                    </div>
                     <div id="mSubnetIdDiv" class="form-group" style="display:none">
-                        <label for="mSubnetId" class="col-sm-3 control-label">Subnet Id</label>
+                        <label for="mSubnetId" class="col-sm-3 control-label">Subnet Id <span><a data-toggle="tooltip" data-placement="bottom" title="Identifier of the VPC subnet to be applied e.g. subnet-05222a43."><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" id="mSubnetId" name="subnet_id">
                         </div>
@@ -393,13 +462,13 @@
                         </div>
                     </div>
                     <div id="mSharedStorageIdDiv" class="form-group" style="display:none">
-                        <label for="mSharedStorageId" class="col-sm-3 control-label">Shared Storage Id</label>
+                        <label for="mSharedStorageId" class="col-sm-3 control-label">Shared Storage Id <span><a data-toggle="tooltip" data-placement="bottom" title="Identifier of the shared file system instance e.g. fs-1803efd1."><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" id="mSharedStorageId" name="shared_storage_id">
                         </div>
                     </div>
                     <div id="mSharedStorageMountDiv" class="form-group" style="display:none">
-                        <label for="mSharedStorageMount" class="col-sm-3 control-label">Shared Storage Mount</label>
+                        <label for="mSharedStorageMount" class="col-sm-3 control-label">Shared Storage Mount <span><a data-toggle="tooltip" data-placement="bottom" title="Mount path of the shared file system e.g. /mnt/efs"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                         <div class="col-sm-9">
                             <input type="text" class="form-control" id="mSharedStorageMount" value="/mnt/efs" name="shared_storage_mnt">
                         </div>
@@ -430,7 +499,7 @@
                     </div>
                     <div id="mEnvVarDiv" class="form-group" style="display:none">
                         <label for="mEnvVar" class="col-sm-3 control-label">Profile Variables
-                            <span><a data-toggle="tooltip" data-placement="bottom" title="You can set commonly used pipeline variables here, such as _DOWNDIR. (eg. _DOWNDIR='/share/data'). You can enter multiple variables by separating them with newline."><i class='glyphicon glyphicon-info-sign'></i></a></span>
+                            <span><a data-toggle="tooltip" data-placement="bottom" title="You can set commonly used pipeline variables here, such as params.DOWNDIR. (eg. params.DOWNDIR = '/share/dnext_data'). You can enter multiple variables by separating them with newline."><i class='glyphicon glyphicon-info-sign'></i></a></span>
                         </label>
                         <div class="col-sm-9">
                             <textarea type="text" rows="1" class="form-control" id="mEnvVar" name="variable"></textarea>
@@ -484,7 +553,6 @@
                         <label for="mExecJob" class="col-sm-3 control-label">Executor of Nextflow Jobs</label>
                         <div class="col-sm-9">
                             <select style=" width:150px" id="mExecJob" class="fbtn btn-default form-control" name="executor_job">
-                                <!--                                  <option value="none">None </option>-->
                                 <option value="local">Local</option>
                                 <option value="sge">SGE</option>
                                 <option value="lsf">LSF</option>
@@ -525,6 +593,22 @@
                             </div>
                         </div>
                     </div>
+                    <?php
+                    if ($login == 1 && (!empty($admin_id) || $role == "admin")){
+                        echo '<div id="shareRunEnvDiv" class="form-group" style="display:none">
+                        <label class="col-sm-3 control-label">
+                        <input type="checkbox" id="shareRunEnv"> Share with Group </input></label>
+                        <div class="col-sm-3">
+                            <select id="groupSel" style="width:100%;" class="fbtn btn-default form-control" name="group_id">
+                            <option value="" disabled selected>Choose group </option>
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <input type="text" class="form-control" id="auto_workdir" name="auto_workdir" placeholder="Please enter generic work directory">
+                        </div>
+                    </div>';
+                    }
+                    ?>
                 </form>
             </div>
             <div class="modal-footer">
@@ -571,25 +655,44 @@
 
 <!---- join Modal-->
 <div id="joinmodal" class="modal fade" tabindex="-1" role="dialog">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                 <h4 class="modal-title" id="joinmodallabel">Join a group</h4>
             </div>
-            <form role="form" method="post">
-                <div class="modal-body" style="overflow:scroll">
-                    <fieldset>
-                        <label id="groupLabel">Select a group to join</label>
-                        <div id="groupListDiv" class="form-group">
-                            <select id="mGroupList" class="form-control" size="25"></select></div>
-                    </fieldset>
+            <div class="modal-body">
+                
+                <form id="joinmodaladd" class="form-horizontal" style="margin-bottom:40px;">
+                   <h5 style="margin-bottom:20px;">Add New Member</h5>
+                    <div class="form-group" >
+                        <label class="col-sm-2 control-label" style="padding-left:30px;">E-Mail of the User <span><a data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Please enter e-mail address of the user and press add button."><i class="glyphicon glyphicon-info-sign"></i></a></span> </label>
+                        <div class="col-sm-8">
+                            <input type="email" class="form-control" id="joinmodal_email" name="email" value="">
+                        </div>
+                        <div class="col-sm-2">
+                            <button id="joinmodal_adduser" type="button" class="btn btn-primary">Add User <i class="fa fa-user"></i></button>
+                        </div>
+                    </div>
+                </form>
+                <h5 style="margin-bottom:10px;">Group Members</h5>
+                <div class="panel-body">
+                    <table id="groupmembertable" class="table table-striped table-bordered" cellspacing="0" width="100%">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Username</th>
+                                <th>E-mail</th>
+                                <th>Options</th>
+                            </tr>
+                        </thead>
+                    </table>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" id="confirmGroupButton" class="btn btn-primary" data-dismiss="">Join</button>
-                    <button type="button" class="btn btn-default" id="cancelGroupButton" data-dismiss="modal" onclick="">Cancel</button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal" id="groupmembertabledata" onclick="">OK</button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -626,61 +729,61 @@
                     <div class="form-group">
                         <label for="userKeyCheck" class="col-sm-4 control-label"><input type="checkbox" id="userKeyCheck" name="check_userkey" data-toggle="collapse" data-target="#userKeyDiv"> Use your own keys </input><span><a data-toggle="tooltip" data-placement="bottom" title="Use your own ssh keys and paste them below"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
                     </div>
-                    <div id="userKeyDiv" class="collapse">
-                        <div id="mUserPriKeyDiv" class="form-group">
-                            <label for="mUserPriKey" class="col-sm-4 control-label">Private Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to be used while connecting to a host"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                            <div class="col-sm-8">
-                                <textarea type="text" rows="5" class="form-control" id="mUserPriKey" name="prikey"></textarea>
-                            </div>
-                        </div>
-                        <div id="mUserPubKeyDiv" class="form-group">
-                            <label for="mUserPubKey" class="col-sm-4 control-label">Public Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to to be added into '~/.ssh/authorized_keys' in the host by user"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                            <div class="col-sm-8">
-                                <textarea type="text" rows="5" class="form-control" id="mUserPubKey" name="pubkey"></textarea>
-                                <p style="font-size:13px;"><b style="color:blue;">* Important Information:</b> Private key will be used for submiting jobs in the host. Therefore, public key of the private key required to be added into '~/.ssh/authorized_keys' in the host by user. Please check <a style="color:blue;" target="_blank" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#ssh-keys">adding keys section</a> for more information.</p>
-                            </div>
+                <div id="userKeyDiv" class="collapse">
+                    <div id="mUserPriKeyDiv" class="form-group">
+                        <label for="mUserPriKey" class="col-sm-4 control-label">Private Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to be used while connecting to a host"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-8">
+                            <textarea type="text" rows="5" class="form-control" id="mUserPriKey" name="prikey"></textarea>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="ourKeyCheck" class="col-sm-4 control-label"><input type="checkbox" id="ourKeyCheck" name="check_ourkey" data-toggle="collapse" data-target="#ourKeyDiv"> Create new keys </input><span><a data-toggle="tooltip" data-placement="bottom" title="Create new ssh keys that are specifically produced for you by clicking generate keys button"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                    </div>
-                    <div id="ourKeyDiv" class="collapse">
-                        <div id="createKeysDiv" class="form-group">
-                            <label for="createKeysButton" class="col-sm-4 control-label">Generate Keys<span><a data-toggle="tooltip" data-placement="bottom" title="Click button to generate new keys for you"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                            <div class="col-sm-8">
-                                <button type="button" id="createKeysButton" class="btn btn-primary" onclick="generateKeys()">Generate Keys</button>
-                            </div>
-                        </div>
-                        <div id="mOurPriKeyDiv" class="form-group" style="display:none;">
-                            <label for="mOurPriKey" class="col-sm-4 control-label">Private Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to be used while connecting to a host"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                            <div class="col-sm-8">
-                                <textarea type="text" rows="5" class="form-control" id="mOurPriKey" name="prikey"></textarea>
-                            </div>
-                        </div>
-                        <div id="mOurPubKeyDiv" class="form-group" style="display:none;">
-                            <label for="mOurPubKey" class="col-sm-4 control-label">Public Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to to be added into '~/.ssh/authorized_keys' in the host by user"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
-                            <div class="col-sm-8">
-                                <textarea type="text" rows="5" class="form-control" id="mOurPubKey" name="pubkey"></textarea>
-                                <p style="font-size:13px;"><b style="color:blue;">* Important Information:</b> Private key will be used for submiting jobs in the host. Therefore, public key of the private key required to be added into '~/.ssh/authorized_keys' in the host by user. Please check <a style="color:blue;" target="_blank" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#ssh-keys">adding keys section</a> for more information.</p>
-                            </div>
+                    <div id="mUserPubKeyDiv" class="form-group">
+                        <label for="mUserPubKey" class="col-sm-4 control-label">Public Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to to be added into '~/.ssh/authorized_keys' in the host by user"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-8">
+                            <textarea type="text" rows="5" class="form-control" id="mUserPubKey" name="pubkey"></textarea>
+                            <p style="font-size:13px;"><b style="color:blue;">* Important Information:</b> Private key will be used for submiting jobs in the host. Therefore, public key of the private key required to be added into '~/.ssh/authorized_keys' in the host by user. Please check <a style="color:blue;" target="_blank" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#ssh-keys">adding keys section</a> for more information.</p>
                         </div>
                     </div>
-                    <?php
-                        if ($login == 1 && (!empty($admin_id) || $role == "admin")){
-                            echo '<div id="hideKeysDiv" class="form-group">
+                </div>
+                <div class="form-group">
+                    <label for="ourKeyCheck" class="col-sm-4 control-label"><input type="checkbox" id="ourKeyCheck" name="check_ourkey" data-toggle="collapse" data-target="#ourKeyDiv"> Create new keys </input><span><a data-toggle="tooltip" data-placement="bottom" title="Create new ssh keys that are specifically produced for you by clicking generate keys button"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+            </div>
+            <div id="ourKeyDiv" class="collapse">
+                <div id="createKeysDiv" class="form-group">
+                    <label for="createKeysButton" class="col-sm-4 control-label">Generate Keys<span><a data-toggle="tooltip" data-placement="bottom" title="Click button to generate new keys for you"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                    <div class="col-sm-8">
+                        <button type="button" id="createKeysButton" class="btn btn-primary" onclick="generateKeys()">Generate Keys</button>
+                    </div>
+                </div>
+                <div id="mOurPriKeyDiv" class="form-group" style="display:none;">
+                    <label for="mOurPriKey" class="col-sm-4 control-label">Private Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to be used while connecting to a host"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                    <div class="col-sm-8">
+                        <textarea type="text" rows="5" class="form-control" id="mOurPriKey" name="prikey"></textarea>
+                    </div>
+                </div>
+                <div id="mOurPubKeyDiv" class="form-group" style="display:none;">
+                    <label for="mOurPubKey" class="col-sm-4 control-label">Public Key<span><a data-toggle="tooltip" data-placement="bottom" title="Key to to be added into '~/.ssh/authorized_keys' in the host by user"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                    <div class="col-sm-8">
+                        <textarea type="text" rows="5" class="form-control" id="mOurPubKey" name="pubkey"></textarea>
+                        <p style="font-size:13px;"><b style="color:blue;">* Important Information:</b> Private key will be used for submiting jobs in the host. Therefore, public key of the private key required to be added into '~/.ssh/authorized_keys' in the host by user. Please check <a style="color:blue;" target="_blank" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#ssh-keys">adding keys section</a> for more information.</p>
+                    </div>
+                </div>
+            </div>
+            <?php
+            if ($login == 1 && (!empty($admin_id) || $role == "admin")){
+                echo '<div id="hideKeysDiv" class="form-group">
                         <label class="col-sm-4 control-label">
                         <input type="checkbox" id="hideKeys"> Hide Keys from User </input></label>
                     </div>';
-                        }
-                    ?>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="savesshkey" data-clickedrow="">Submit</button>
-            </div>
-        </div>
+            }
+            ?>
+            </form>
     </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="savesshkey" data-clickedrow="">Submit</button>
+    </div>
+</div>
+</div>
 </div>
 <!-- ssh modal ends-->
 
@@ -791,13 +894,66 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary" id="saveGithub" >Submit</button>
+                <button type="button" class="btn btn-primary" id="saveGithub">Submit</button>
             </div>
         </div>
     </div>
 </div>
 <!-- amz keys modal ends-->
 
+<!-- google keys modal starts-->
+<div id="googleKeysModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="googleKeysModalTitle">Modal title</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <div class="form-group" style="display:none">
+                        <label for="mGoogID" class="col-sm-2 control-label">ID</label>
+                        <div class="col-sm-10">
+                            <input type="text" class="form-control" id="mGoogID" name="id">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mGoogName" class="col-sm-3 control-label">Key Name <span><a data-toggle="tooltip" data-placement="bottom" title="Please enter any name for your key"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="mGoogName" name="name">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="mGoogProjectID" class="col-sm-3 control-label">Project ID <span><a data-toggle="tooltip" data-placement="bottom" title="Please get Project ID by following these steps: Open the Google Cloud Console. On the dashboard, find 'Project Info' box and copy 'Project ID' field. eg.dolphinnext-193616"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9">
+                            <input type="text" class="form-control" id="mGoogProjectID" name="project_id">
+                        </div>
+                    </div>
+                </form>
+                <div class="form-horizontal">
+                    <div class="form-group">
+                        <label class="col-sm-3 control-label">Service Account Key <span><a data-toggle="tooltip" data-placement="bottom" title="Please download the credentials file by following these steps: Open the Google Cloud Console. Go to APIs & Services → Credentials. Click on the Create credentials. Choose Service account key. Click the Create button and download the JSON file e.g. creds.json"><i class='glyphicon glyphicon-info-sign'></i></a></span></label>
+                        <div class="col-sm-9" id="key_name_div">
+                            <p style="padding-top:7px;"><span id="key_name_span"></span><button type="button" id="delGoogKeyIcon" class="btn" name="button" data-toggle="modal" data-backdrop="false" data-target="#confirmDelModal" style="background:none; margin:0px; padding:0px;"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Delete Google Key"><i class="glyphicon glyphicon-trash"></i></a></button></p>
+                        </div>
+                        <div class="col-sm-9" id="key_import_div">
+                            <form id="mgoogkeyform" action="ajax/import.php" class="dropzone">
+                                <div class="fallback ">
+                                    <input name="file" type="file" />
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveGoogle">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- google keys modal ends-->
 
 <!-- user modal starts-->
 <div id="userModal" class="modal fade" tabindex="-1" role="dialog">
@@ -867,6 +1023,41 @@
 </div>
 <!-- user modal ends-->
 
+
+<!-- admin Add Group Modal starts-->
+<div id="adminAddGroupModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Add User into New Group</h4>
+            </div>
+            <div class="modal-body">
+                <form class="form-horizontal">
+                    <div class="form-group">
+                        <label for="adminAddGroupNewGroup" class="col-sm-3 control-label">User Info:</label>
+                        <div class="col-sm-9">
+                            <p id="adminAddGroupUserInfo"></p>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="adminAddGroupNewGroup" class="col-sm-3 control-label">Choose Group</label>
+                        <div class="col-sm-9">
+                            <select id="adminAddGroupNewGroup" class="form-control" name="group_id">
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="adminAddGroupSave">Submit</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- admin add group modal ends-->
+
 <div id="warnDelete" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -877,15 +1068,15 @@
             <div class="modal-body">
                 <span id="warnDelText">Text</span>
                 </br>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">OK</button>
-            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">OK</button>
         </div>
     </div>
 </div>
+</div>
 
-<!--Confirm Modal-->
+<!--Confirm Del Modal-->
 
 <div id="confirmDelModal" class="modal fade" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
@@ -896,13 +1087,13 @@
             </div>
             <div class="modal-body" id="confirmDelModalText">Text</div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-primary" data-dismiss="modal" id="mDelBtn">Delete</button>
+                <button type="button" class="btn btn-primary" data-dismiss="modal" id="confirmDelModalDelBtn">Delete</button>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
             </div>
         </div>
     </div>
 </div>
-<!--Confirm Modal Ends-->
+<!--Confirm Del Modal Ends-->
 
 <!--Confirm Modal-->
 

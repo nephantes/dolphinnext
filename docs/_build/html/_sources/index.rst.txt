@@ -8,15 +8,43 @@ Welcome to DolphinNext's Documentation!
 
 Contents:
 
+.. _Getting Started:
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Getting Started
+
+   dolphinNext/overview
+   dolphinNext/example
+   dolphinNext/about
+   dolphinNext/support
+
+.. _User Guide:
+
+.. toctree::
+   :maxdepth: 1
+   :caption: User Guide
+
+   dolphinNext/quick
+   dolphinNext/project
+   dolphinNext/run
+   dolphinNext/profile
+   dolphinNext/amazon
+   dolphinNext/google
+   dolphinNext/public_ssh_key
+   dolphinNext/faq
    
-   dolphinNext/DolphinNext.rst
+
+.. _Developer Guide:
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer Guide
+
+   dolphinNext/dev_quick
+   dolphinNext/process
+   dolphinNext/pipeline
+
+   
 
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

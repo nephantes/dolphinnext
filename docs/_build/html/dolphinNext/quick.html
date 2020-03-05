@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Quick Start Guide &mdash; DolphinNext 1.0 documentation</title>
+  <title>Quick Start Guide &mdash; DolphinNext v1.1.3 documentation</title>
   
 
   
@@ -35,10 +35,9 @@
         <link rel="index" title="Index"
               href="../genindex.html"/>
         <link rel="search" title="Search" href="../search.html"/>
-    <link rel="top" title="DolphinNext 1.0 documentation" href="../index.html"/>
-        <link rel="up" title="DolphinNext" href="DolphinNext.html"/>
-        <link rel="next" title="Process Guide" href="process.html"/>
-        <link rel="prev" title="DolphinNext" href="DolphinNext.html"/> 
+    <link rel="top" title="DolphinNext v1.1.3 documentation" href="../index.html"/>
+        <link rel="next" title="Project Guide" href="project.html"/>
+        <link rel="prev" title="Support" href="support.html"/> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -67,7 +66,7 @@
             
             
               <div class="version">
-                1.0
+                v1.1.3
               </div>
             
           
@@ -91,26 +90,40 @@
               
             
             
-              <ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="DolphinNext.html">DolphinNext</a><ul class="current">
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Quick Start Guide</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#short-overview">Short Overview</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#getting-started">Getting Started</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#creating-profile">Creating Profile</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#running-pipelines">Running Pipelines</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#editing-processes-pipelines">Editing Processes/Pipelines</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#creating-new-pipelines-processes">Creating New Pipelines/Processes</a></li>
+              <p class="caption"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Short Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="example.html">Pipeline Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="about.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="support.html">Support</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User Guide</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Quick Start Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#signing-up">Signing Up</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-profile">Creating Profile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-pipelines">Running Pipelines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-files">Adding Files</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#remote-files">Remote Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#geo-files">Geo Files</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#upload-files">Upload Files</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="process.html">Process Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pipeline.html">Pipeline Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="project.html">Project Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="run.html">Run Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="profile.html">Profile Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="amazon.html">Amazon Cloud Guide</a></li>
-<li class="toctree-l2"><a class="reference internal" href="example.html">Pipeline Examples</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="project.html">Project Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="run.html">Run Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profile.html">Profile Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="amazon.html">Amazon Cloud Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="google.html">Google Cloud Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="public_ssh_key.html">Adding Public SSH Key</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Developer Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dev_quick.html">Developer Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process.html">Process Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pipeline.html">Pipeline Guide</a></li>
 </ul>
 
             
@@ -155,8 +168,6 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-          <li><a href="DolphinNext.html">DolphinNext</a> &raquo;</li>
-        
       <li>Quick Start Guide</li>
     
     
@@ -178,89 +189,170 @@
             
   <div class="section" id="quick-start-guide">
 <h1>Quick Start Guide<a class="headerlink" href="#quick-start-guide" title="Permalink to this headline">¶</a></h1>
-<p>This guide will walk you through how to start using dolphinNext pipelines and creating new pipelines.</p>
-<div class="section" id="short-overview">
-<h2>Short Overview<a class="headerlink" href="#short-overview" title="Permalink to this headline">¶</a></h2>
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
-    <iframe src="https://www.youtube.com/embed/1ak1m5pvkw4" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
-</div>
-</br></div>
-<div class="section" id="getting-started">
-<h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
-<p>First off, you need to enter dolphinNext web page: <a class="reference external" href="https://dolphinnext.umassmed.edu/">https://dolphinnext.umassmed.edu/</a> and click <strong>Sign Up</strong> or <strong>Sign in with Google</strong> buttons. You will be asked to enter your institute information. An email will be sent to you upon verification of your information.</p>
-<a class="reference internal image-reference" href="../_images/sign_in.png"><img alt="../_images/sign_in.png" class="align-center" src="../_images/sign_in.png" style="width: 50%;" /></a>
+<div class="section" id="signing-up">
+<h2>Signing Up<a class="headerlink" href="#signing-up" title="Permalink to this headline">¶</a></h2>
+<p>This guide will walk you through how to start using DolphinNext pipelines. First off, you need to enter DolphinNext web page: <a class="reference external" href="https://dolphinnext.umassmed.edu/">https://dolphinnext.umassmed.edu/</a> and click <strong>Sign Up</strong> or <strong>Sign in with Google</strong> buttons. You will be asked to enter your institute information. An email will be sent to you upon verification of your information.</p>
+<a class="reference internal image-reference" href="../_images/sign_in.png"><img alt="../_images/sign_in.png" class="align-center" src="../_images/sign_in.png" style="width: 99%;" /></a>
 </div>
 <div class="section" id="creating-profile">
 <h2>Creating Profile<a class="headerlink" href="#creating-profile" title="Permalink to this headline">¶</a></h2>
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
-    <iframe src="https://www.youtube.com/embed/7wH2NjXSebA" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
-</div>
-</br><p>To run existing pipelines, you need to create <strong>run environment</strong> in <strong>profile</strong> section. To do so, click on the profile button at the top right of the screen, then you’ll notice several tabs as shown below.</p>
-<img alt="../_images/profile_tabs2.png" class="align-center" src="../_images/profile_tabs2.png" />
-<p>Follow through the steps <a class="reference external" href="profile.html">in profile page</a> to create SSH Key (optionally, Amazon Key) and then specify the hosts you want to use in <strong>run environments</strong> section. Once you complete these steps, you’re now able to submit jobs to specifed hosts.</p>
+<p>Once you enter DolphinNext platform, <strong>Profile Wizard</strong> will open as shown at below.</p>
+<a class="reference internal image-reference" href="../_images/profilewizard_first.png"><img alt="../_images/profilewizard_first.png" class="align-center" src="../_images/profilewizard_first.png" style="width: 99%;" /></a>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Before creating run environment, <strong>SSH Keys</strong> needed to be created in SSH Keys tab. If you want to create Amazon EC2 instances and submit your jobs to Amazon Cloud, then both <strong>SSH</strong> and <strong>Amazon Key</strong> are required before specifying run environment.</p>
+<p>If you need to re-open wizard window, you can simply click wizard button at the top right.</p>
+<a class="last reference internal image-reference" href="../_images/profilewizard_button.png"><img alt="../_images/profilewizard_button.png" class="align-center" src="../_images/profilewizard_button.png" style="width: 45%;" /></a>
 </div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you have any issues/questions about creating profiles please contact us on: <a class="reference external" href="mailto:support&#37;&#52;&#48;dolphinnext&#46;com">support<span>&#64;</span>dolphinnext<span>&#46;</span>com</a></p>
+</div>
+<ol class="arabic">
+<li><p class="first">First, choose your profile type:</p>
+<blockquote>
+<div><ol class="upperalpha simple">
+<li>If you have an access to High Performance Computing (HPC) environments, or personal workstations, then please choose <strong>Host</strong>.</li>
+<li>If you have an Amazon Web Services (AWS) account or planning to create one, then please choose <strong>Amazon</strong> and follow our <a class="reference external" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#b-defining-amazon-profile">Amazon Guide</a>  to create your run environment.</li>
+<li>If you have an Google Cloud account or planning to create one, then please choose <strong>Google</strong> and follow our <a class="reference external" href="https://dolphinnext.readthedocs.io/en/latest/dolphinNext/profile.html#c-defining-google-profile">Google Guide</a> to create your run environment.</li>
+<li>If you choose <strong>MGHPCC cluster</strong> option, you can upload your files to our MGHPCC cluster to process your data and download your results from report section. However, you will not have direct access to our cluster.</li>
+</ol>
+</div></blockquote>
+</li>
+</ol>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you choose MGHPCC option, you can skip the rest of this guideline and go to <a class="reference external" href="quick.html#running-pipelines">Running Pipelines Section</a>.</p>
+</div>
+<ol class="arabic" start="2">
+<li><p class="first">Second, add public SSH Key into your host machine.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Please confirm our <a class="reference external" href="https://dolphinnext.umassmed.edu/php/terms.php">Terms and Conditions</a> &amp; <a class="reference external" href="https://dolphinnext.umassmed.edu/php/privacy.php">Privacy Policy</a> by clicking checkbox.</li>
+<li>Here, public key is securely generated for your account and required to be added into <code class="docutils literal notranslate"><span class="pre">~/.ssh/authorized_keys</span></code> in the host by user. Please check our <a class="reference external" href="public_ssh_key.html">Adding Public SSH Key Section</a> for help.</li>
+<li>After adding public key, please click Validate SSH Keys button to finalize this section.</li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p><strong>Username/Hostname:</strong> You should enter your username and hostname of the host which you would like to connect (<a class="reference external" href="mailto:yourusername&#37;&#52;&#48;yourhostname">yourusername<span>&#64;</span>yourhostname</a>). For instance, for <a class="reference external" href="mailto:us2r&#37;&#52;&#48;ghpcc06&#46;umassrc&#46;org">us2r<span>&#64;</span>ghpcc06<span>&#46;</span>umassrc<span>&#46;</span>org</a>:</p>
+<div class="last highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">*</span>  <span class="n">Username</span><span class="p">:</span> <span class="n">yourusername</span> <span class="p">(</span><span class="n">eg</span><span class="o">.</span> <span class="n">us2r</span><span class="p">)</span>
+<span class="o">*</span>  <span class="n">Hostname</span><span class="p">:</span> <span class="n">yourhostname</span> <span class="p">(</span><span class="n">eg</span><span class="o">.</span> <span class="n">ghpcc06</span><span class="o">.</span><span class="n">umassrc</span><span class="o">.</span><span class="n">org</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<ol class="arabic simple" start="3">
+<li>Third, install/validate software dependencies into the host machine.</li>
+</ol>
+<p>In order to execute our pipelines, Nextflow should be installed into your host environment. Besides, most of our pipelines isolates their dependencies within their Docker or Singularity containers, therefore please install these softwares into your machine by following guidelines. If your platform doesn’t support the installation of Docker, you can still use our pipelines by just using Singularity.</p>
+<blockquote>
+<div><ul class="simple">
+<li>Installing <a class="reference external" href="faq.html#how-can-i-install-nextflow">Nextflow</a></li>
+<li>Installing <a class="reference external" href="faq.html#how-can-i-install-singularity">Singularity (Version 3)</a></li>
+<li>Installing <a class="reference external" href="faq.html#how-can-i-install-docker">Docker</a></li>
+</ul>
+<p>Sofware Dependencies Section:</p>
+<ul class="simple">
+<li><strong>JAVA Command (optional):</strong> If JAVA is not added to $PATH environment, you can run command (eg. <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">java/8.0</span></code>) to manipulate your $PATH environment and gain access to JAVA.</li>
+<li><strong>Nextflow Path or Command (optional):</strong> If nextflow is not added to $PATH environment, you can either enter the path of the nextflow (eg. <code class="docutils literal notranslate"><span class="pre">/project/bin</span></code>), or run command (eg. <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">nextflow</span></code>) to manipulate your $PATH environment and gain access to new softwares.</li>
+<li><strong>Docker/Singularity Command (optional):</strong> You can run command to manipulate your $PATH environment in order to gain access to new softwares. (eg. <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">docker/1.0.0</span></code> or <code class="docutils literal notranslate"><span class="pre">module</span> <span class="pre">load</span> <span class="pre">singularity/3.0.0</span></code>)</li>
+</ul>
+</div></blockquote>
+<ol class="arabic" start="4">
+<li><p class="first">General run settings could be set in following <strong>Run settings</strong> section:</p>
+<blockquote>
+<div><ul class="simple">
+<li><strong>Executor of Nextflow:</strong> Nextflow itself is initiated with this method and it will be only used for running nextflow itself.</li>
+<li><strong>Executor of Nextflow Jobs:</strong> This setting will be used as default setting for submitted jobs by Nextflow.</li>
+<li><strong>Download Directory:</strong> Used to download shared pipeline files such as genome indexes. If your platform has already such path, please enter that location. Otherwise you can set any path that you have permission to write. e.g. <code class="docutils literal notranslate"><span class="pre">/share/dolphinnext/downloads</span></code></li>
+</ul>
+</div></blockquote>
+</li>
+</ol>
+<p>Once you complete these steps, you’re now able to start using publicly available pipelines.</p>
 </div>
 <div class="section" id="running-pipelines">
 <h2>Running Pipelines<a class="headerlink" href="#running-pipelines" title="Permalink to this headline">¶</a></h2>
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
     <iframe src="https://www.youtube.com/embed/gaq_LwewFPA" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
 </div>
-</br><p>The easiest way to run pipeline is going to use main page by clicking the <strong>Biocore DolphinNext</strong> button at the top left of the screen. Now, you can investigate publicly available pipelines as shown at below and select the pipeline you want run by clicking <strong>Learn More</strong> button.</p>
+</br><ol class="arabic">
+<li><p class="first">The easiest way to run pipeline is using main page by clicking the <strong>Biocore DolphinNext</strong> button at the top left of the screen. Now, you can investigate publicly available pipelines as shown at below and select the pipeline you want run by clicking <strong>Learn More</strong> button.</p>
 <blockquote>
 <div><img alt="../_images/main_page.png" class="align-center" src="../_images/main_page.png" />
 </div></blockquote>
-<p>Once pipeline is loaded, you will notice “Run” button at the right top of the page.</p>
+</li>
+<li><p class="first">Once pipeline is loaded, you will notice “Run” button at the right top of the page.</p>
 <blockquote>
 <div><a class="reference internal image-reference" href="../_images/project_runbutton.png"><img alt="../_images/project_runbutton.png" class="align-center" src="../_images/project_runbutton.png" style="width: 35%;" /></a>
 </div></blockquote>
-<p>This button opens new window where you can create new project by clicking “Create a Project” button. After entering and saving the name of the project, it will be added to your project list. Now you can select your project by clicking on the project as shown in the figure below.</p>
+</li>
+<li><p class="first">This button opens new window where you can create new project by clicking “Create a Project” button. After entering and saving the name of the project, it will be added to your project list. Now you can select your project by clicking on the project as shown in the figure below.</p>
 <blockquote>
 <div><img alt="../_images/project_pipeselect.png" class="align-center" src="../_images/project_pipeselect.png" />
 </div></blockquote>
-<p>You may proceed with entering run name which will be added to your run list of the project. Clicking “Save run” will redirect to “run page” where you can initiate your run.</p>
-<p><strong>Run Page</strong></p>
-<p>In the header of the run page, you will notice the rocket icon and the title of the run.</p>
-<img alt="../_images/run_header_waiting.png" class="align-center" src="../_images/run_header_waiting.png" />
-<p>Run status is monitored at the right part of the header. Initially, orange <code class="docutils literal notranslate"><span class="pre">Waiting</span></code> button is shown. In order to initiate run, following data need to be entered:</p>
+</li>
+<li><p class="first">Now, you may proceed with entering run name which will be added to your run list of the project. Clicking “Save run” will redirect to “run page”.</p>
+</li>
+<li><p class="first">Initially, in the header of the run page, orange <code class="docutils literal notranslate"><span class="pre">Waiting</span></code> button will be shown. In order to initiate run, following data need to be entered:</p>
 <blockquote>
-<div><blockquote>
-<div><ol class="arabic simple">
-<li><strong>Work Directory:</strong>  Full path of the directory, where nextflow runs will be executed.</li>
-<li><strong>Run Environment:</strong> Profile that is created in the <a class="reference external" href="profile.html">profile</a>  page. If <a class="reference external" href="profile.html#b-defining-amazon-profile">Amazon profile</a>  is selected, then status of the profile should to be at the stage of <strong>running</strong>.</li>
-<li><strong>Inputs:</strong> Value and path of the files need to be entered.</li>
+<div><img alt="../_images/run_header_waiting.png" class="align-center" src="../_images/run_header_waiting.png" />
+<ol class="upperalpha">
+<li><p class="first"><strong>Work Directory:</strong>  Full path of the directory, where nextflow runs will be executed.</p>
+<blockquote>
+<div><a class="reference internal image-reference" href="../_images/run_params_work.png"><img alt="../_images/run_params_work.png" class="align-center" src="../_images/run_params_work.png" style="width: 99%;" /></a>
+</div></blockquote>
+</li>
+<li><p class="first"><strong>Run Environment:</strong> Profile that is created in the <a class="reference external" href="profile.html">profile</a>  page. If <a class="reference external" href="profile.html#b-defining-amazon-profile">Amazon profile</a> or <a class="reference external" href="profile.html#c-defining-google-profile">Google profile</a> is selected, then status of the profile should to be at the stage of <strong>running</strong>.</p>
+<blockquote>
+<div><a class="reference internal image-reference" href="../_images/run_params_env.png"><img alt="../_images/run_params_env.png" class="align-center" src="../_images/run_params_env.png" style="width: 99%;" /></a>
+</div></blockquote>
+</li>
+<li><p class="first"><strong>Inputs:</strong> Value and path of the files need to be entered. For detailed information please check <a class="reference external" href="quick.html#adding-files">adding files section.</a></p>
+<blockquote>
+<div><a class="reference internal image-reference" href="../_images/run_params_inputs.png"><img alt="../_images/run_params_inputs.png" class="align-center" src="../_images/run_params_inputs.png" style="width: 50%;" /></a>
+</div></blockquote>
+</li>
 </ol>
 </div></blockquote>
-<a class="reference internal image-reference" href="../_images/run_params.png"><img alt="../_images/run_params.png" class="align-center" src="../_images/run_params.png" style="width: 99%;" /></a>
+</li>
+<li><p class="first">Once all requirements are satisfied, <code class="docutils literal notranslate"><span class="pre">Waiting</span></code> button will turn in to green <code class="docutils literal notranslate"><span class="pre">ready</span> <span class="pre">to</span> <span class="pre">run</span></code> button as shown below. You can initiate your run by clicking <code class="docutils literal notranslate"><span class="pre">ready</span> <span class="pre">to</span> <span class="pre">run</span></code> button. Please go through <a class="reference external" href="run.html">run page</a> for detailed explanation about each module is used.</p>
+<blockquote>
+<div><img alt="../_images/run_header_ready.png" class="align-center" src="../_images/run_header_ready.png" />
 </div></blockquote>
-<p>For detailed information about adding files, you can check our tutorial video:</p>
-   <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
-       <iframe src="https://www.youtube.com/embed/3QaAqdyB11w" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
-   </div>
-   </br>
-
-
-
-Once all requirements are satisfied, ``Waiting`` button will turn in to green ``ready to run`` button as shown below.<img alt="../_images/run_header_ready.png" class="align-center" src="../_images/run_header_ready.png" />
-<p>You can initiate your run by clicking <code class="docutils literal notranslate"><span class="pre">ready</span> <span class="pre">to</span> <span class="pre">run</span></code> button. Please go through <a class="reference external" href="run.html">run page</a> for detailed explanation about each module is used.</p>
+</li>
+</ol>
 </div>
-<div class="section" id="editing-processes-pipelines">
-<h2>Editing Processes/Pipelines<a class="headerlink" href="#editing-processes-pipelines" title="Permalink to this headline">¶</a></h2>
-<p>The simpliest way to edit pipelines is creating a copy of the existing ones by clicking <strong>copy pipeline</strong> icon which is located just next to pipeline title.</p>
-<img alt="../_images/copy_pipeline.png" class="align-center" src="../_images/copy_pipeline.png" />
-<p>Similarly you can create a copy of process by clicking <strong>copy process</strong> button on the top right of the process window.</p>
-<img alt="../_images/copy_process.png" class="align-center" src="../_images/copy_process.png" />
-<p>Once you copied the pipeline/process, you will own all the  permissions of your process/pipeline and you can easily modify and save on your version.</p>
+<div class="section" id="adding-files">
+<h2>Adding Files<a class="headerlink" href="#adding-files" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="remote-files">
+<h3>Remote Files<a class="headerlink" href="#remote-files" title="Permalink to this headline">¶</a></h3>
+<p>You can reach your remote files by entering:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Full path of a directory: eg. <code class="docutils literal notranslate"><span class="pre">/share/data/umw_biocore/genome_data/mousetest/mm10/gz</span></code></li>
+<li>Web link: eg. <code class="docutils literal notranslate"><span class="pre">https://galaxyweb.umassmed.edu/pub/dnext_data/test/reads</span></code></li>
+<li>Amazon (S3) Bucket: eg. <code class="docutils literal notranslate"><span class="pre">s3://biocore/fastq</span></code></li>
+<li>Google (GS) Bucket: eg. <code class="docutils literal notranslate"><span class="pre">gs://biocore/fastq</span></code></li>
+</ul>
+</div></blockquote>
 </div>
-<div class="section" id="creating-new-pipelines-processes">
-<h2>Creating New Pipelines/Processes<a class="headerlink" href="#creating-new-pipelines-processes" title="Permalink to this headline">¶</a></h2>
-<p>Please follow through the <a class="reference external" href="pipeline.html">Pipeline Guide</a> to create new pipelines and <a class="reference external" href="process.html">Process Guide</a> for processes. You can also check our developer guide video to start:</p>
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
-    <iframe src="https://www.youtube.com/embed/d6jkg1l7FgA" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+<div class="section" id="geo-files">
+<h3>Geo Files<a class="headerlink" href="#geo-files" title="Permalink to this headline">¶</a></h3>
+<p>If you want to download and use NCBI (GEO data) in the pipeline, you can simply use <strong>GEO Files</strong> tab. Here are the few examples for GEO ID: <code class="docutils literal notranslate"><span class="pre">GSM1331276</span></code>, <code class="docutils literal notranslate"><span class="pre">GSE55190</span></code>, <code class="docutils literal notranslate"><span class="pre">SRR10095965</span></code></p>
 </div>
-</br></div>
+<div class="section" id="upload-files">
+<h3>Upload Files<a class="headerlink" href="#upload-files" title="Permalink to this headline">¶</a></h3>
+<p>If you need to upload your local files and transfer into <strong>Target Directory in the Host</strong>, you can use <strong>Upload Files</strong> tab.</p>
+<p>For detailed information about adding files, please check our tutorial video:</p>
+<blockquote>
+<div><div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; height: auto;">
+    <iframe src="https://www.youtube.com/embed/3QaAqdyB11w" frameborder="0" allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+</div>
+</br></div></blockquote>
+</div>
+</div>
 </div>
 
 
@@ -273,10 +365,10 @@ Once all requirements are satisfied, ``Waiting`` button will turn in to green ``
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="process.html" class="btn btn-neutral float-right" title="Process Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="project.html" class="btn btn-neutral float-right" title="Project Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="DolphinNext.html" class="btn btn-neutral" title="DolphinNext" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="support.html" class="btn btn-neutral" title="Support" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -307,7 +399,7 @@ Once all requirements are satisfied, ``Waiting`` button will turn in to green ``
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'../',
-            VERSION:'1.0',
+            VERSION:'v1.1.3',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  true,

@@ -1,3 +1,484 @@
+//################################
+// --textEditor jquery plugin --
+//################################
+
+(function ($) {
+    var methods = {
+        init: function (options) {
+            var settings = $.extend({
+                // default values.
+                color: "#556b2f",
+                backgroundColor: "white",
+                heightHeader: "60px",
+                lineHeightHeader: "60px",
+                heightBody: "600px",
+                heightEditor: "530px",
+                heightFileList: "565px",
+                heightTitle: "50px",
+                lineHeightTitle: "50px",
+                heightIconBar: "35px"
+            }, options);
+            var elems = $(this);
+            elems.css("width", "100%")
+            elems.css("height", "100%")
+            var elemsID = $(this).attr("id");
+            elems.data('settings', settings);
+            elems.data("tooglescreen","expand")
+            var data = getData(settings);
+            if (data === undefined || data == null || data == "") {
+                elems.append('<div  style="font-weight:900; line-height:' + settings.lineHeightTitle + 'height:' + settings.heightTitle + ';">No data available to show</div>')
+            } else {
+                // append panel
+                elems.append(getPanel(data, settings, elemsID));
+                // after appending panel
+                afterAppendPanel(data,settings, elemsID, elems)
+            }
+            return this;
+        },
+        fnAddFile: function (filename) {
+            var elems = $(this);
+            var elemsID = $(this).attr("id");
+            var settings = elems.data('settings');
+            var liAr = elems.find("li[tabid]");
+            var newLiID = ""
+            if (liAr.length > 0){
+                newLiID = parseInt($(liAr[liAr.length-1]).attr("el"))+1
+            } else {
+                newLiID = "0"
+            }
+            var liDiv = elems.find(".li-content");
+            var tabDivAr = elems.find(".tab-content");
+            var newLiElement = getLi(filename, elemsID, newLiID);
+            var text = ""
+            $(liDiv[0]).append(newLiElement);
+            $(tabDivAr[0]).append(getTab(elemsID, newLiID, settings));
+            afterAppendEachEl(text, newLiID, elemsID, elems, settings)
+            var tooglescreen = elems.data("tooglescreen") //expand or compress
+            if (tooglescreen == "compress"){
+                tooglescreen = "expand"
+                var editorID = $(newLiElement).attr("editorID");
+                toogleContentSize(editorID, elemsID, newLiID, tooglescreen, elems, settings);
+            } 
+            var a = elems.find('li[el="'+newLiID+'"] > a');
+            if (a.length){
+                a.click()
+            }
+            return this;
+        }
+    };
+
+    $.fn.textEditor = function (methodOrOptions) {
+        if (methods[methodOrOptions]) {
+            return methods[methodOrOptions].apply(this, Array.prototype.slice.call(arguments, 1));
+        } else if (typeof methodOrOptions === 'object' || !methodOrOptions) {
+            // Default to "init"
+            return methods.init.apply(this, arguments);
+        } else {
+            $.error('Method ' + methodOrOptions + ' does not exist on jQuery');
+        }
+    };
+
+    var cleanFileName = function (name, type) {
+        if (type == "jquery"){
+            name = name.replace(/\./g, "_");
+            name = name.replace(/\//g, "_");
+        }
+        name = name.replace(/\$/g, "_");
+        name = name.replace(/\!/g, "_");
+        name = name.replace(/\</g, "_");
+        name = name.replace(/\>/g, "_");
+        name = name.replace(/\?/g, "_");
+        name = name.replace(/\(/g, "_");
+        name = name.replace(/\"/g, "_");
+        name = name.replace(/\'/g, "_");
+        name = name.replace(/\\/g, "_");
+        name = name.replace(/@/g, "_");
+        return name;
+    }
+
+    var getFileListHeaderIconDiv = function (elemsID) {
+        var border = "border-right: 1px solid lightgray;"
+        var addIcon = `<li role="presentation"><a id="addIcon-` + elemsID + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Add File"><i style="font-size: 18px;" class="fa fa-plus"></i></a></li>`;
+        var renameIcon = `<li role="presentation"><a id="renameIcon-` + elemsID + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Rename File"><i style="font-size: 18px;" class="fa fa-pencil"></i></a></li>`;
+        var deleteIcon = `<li role="presentation"><a  id="deleteIcon-` + elemsID + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Delete File"><i style="font-size: 18px;" class="fa fa-trash"></i></a></li>`;
+        var content = `<ul style="float:right"  class="nav nav-pills panelheader">` + addIcon + renameIcon + deleteIcon + `</ul>`;
+        var wrapDiv = '<div id="' + elemsID + '-ListHeaderIconDiv" style="'+border+'height:35px; width:100%;">' + content + '</div>';
+        return wrapDiv;
+    }
+
+    var getLi = function (filename, elemsID, el){
+        var active = "";
+        if (el == 0) {
+            active = "active"
+        } else {
+            active = "";
+        }
+        var icon = "fa-file-text-o";
+        var filenameClwithDot = cleanFileName(filename, "default")
+        var editorID = "editorID_" + elemsID + "_" + el;
+        var fileid = "fileID_" + elemsID + "_" + el;
+        var tabID = "fileTabs_" + elemsID + "_" + el;
+        //remove directory str, only show filename in label
+        return '<li el="'+el+'" tabID="'+tabID+'" editorID="'+editorID+'" id="'+filenameClwithDot+'" class="' + active + '"><a  class="reportFile" data-toggle="tab" href="#' + tabID + '" ><i class="fa ' + icon + '"></i><span>' + filenameClwithDot + '</span></a></li>';
+    }
+
+    var getTab = function (elemsID, el, settings){
+        var tabID = "fileTabs_" + elemsID + "_" + el;
+        var fileid = "fileID_" + elemsID + "_" + el;
+        var active = "";
+        if (el == 0) {
+            active = 'in active';
+        }
+        var editorID = "editorID_" + elemsID + "_" + el;
+        var scriptMode = "scriptMode_" + elemsID + "_" + el;          
+        var aceEditorDiv = `<div id="`+editorID+`" style="height:`+settings.heightEditor+`; width: 100%;"></div>
+<div class="row">
+<p class="col-sm-4" style="padding-top:4px; padding-right:0; padding-left:60px;">Language Mode:</p>
+<div class="col-sm-3">
+<select id="`+scriptMode+`" class="form-control">
+<option value="groovy">groovy</option>
+<option value="markdown">markdown</option>
+</select>
+</div>
+</div>`;
+        var contentDiv = getFileContentHeaderIconDiv(fileid) + '<div style="width:100%; height:'+settings.heightIconBar+';" id="' + fileid + '">' + aceEditorDiv + '</div>';
+        return '<div style="height:100%; width:100%;" id = "' + tabID + '" class = "tab-pane fade fullsize ' + active + '" >'+contentDiv+'</div>';
+    } 
+
+    var getFileListCol = function (elemsID, dataObj, height, lineHeight, settings) {
+        var fileListColID = "fileListDiv_" + elemsID;
+        var colPercent =  "15";
+        var overflowT = 'overflow: scroll; ';
+        var liText = "";
+        $.each(dataObj, function (el) {
+            if (dataObj[el]) {
+                liText +=  getLi(dataObj[el].filename, elemsID, el);
+            }
+        });
+        if (!liText) {
+            liText = '<div style="margin:10px;"> <ul class="nav nav-pills nav-stacked li-content">No data available</ul></div>';
+        } else {
+            liText = '<ul class="nav nav-pills nav-stacked li-content">' + liText + '</ul>';
+            liText = '<div style="'+overflowT+'width:100%; height:calc(100% - '+settings.heightIconBar+');" >' + liText + '</div>';
+        }
+        var columnPercent = '15';
+        var clearFix = " clear:both; "; //if its the first element of multicolumn
+        var center = ""
+        var heightT = ""
+        var lineHeightT = ""
+        if (height) {
+            heightT = 'height:' + height + '; ';
+        }
+        if (lineHeight) {
+            lineHeightT = 'line-height:' + lineHeight + '; ';
+        }
+        var IconDiv = getFileListHeaderIconDiv(elemsID);
+        var listDiv = '<div id="'+fileListColID+'" style="'+heightT + lineHeightT+ clearFix + ' float:left; '+' width:'+ columnPercent + '%;" id = "' + fileListColID  + '" >'+IconDiv+liText+'</div>';
+        return listDiv
+    }
+
+    var getFileContentHeaderIconDiv = function (fileid) {
+        var content = `<ul style="float:inherit"  class="nav nav-pills panelheader">` +
+            `<li role="presentation"><a fileid="` + fileid + `" id="fullscr-` + fileid + `" data-toggle="tooltip" data-placement="bottom" data-original-title="Toogle Full Screen"><i style="font-size: 18px;" class="fa fa-expand"></i></a></li>` +`</ul>`
+        var wrapDiv = '<div id="' + fileid + '-ContentHeaderIconDiv" style="float:right; height:35px; width:100%;">' + content + '</div>';
+        return wrapDiv;
+    }
+
+    var getFileContentCol = function (elemsID, dataObj, height, lineHeight, settings) { 
+        var colPercent = "85";
+        var heightT = ""
+        var lineHeightT = ""
+        var navTabDiv = '<div style="height:inherit;" class="tab-content">';
+        $.each(dataObj, function (el) {
+            navTabDiv += getTab(elemsID, el, settings);
+        });
+        navTabDiv += '</div>';
+        if (height) {
+            heightT = 'height:' + height + '; ';
+        }
+        if (lineHeight) {
+            lineHeightT = 'line-height:' + lineHeight + '; ';
+        }
+        return '<div style="' + heightT + lineHeightT + 'float:left;  width:' + colPercent + '%; ">' + navTabDiv + "</div>";
+    }
+
+    var getColumnContent = function (dataObj, colObj, nTd) {
+        var col = "";
+        if (colObj.fnCreatedCell && !nTd) {
+            var nTd = $("<span></span>");
+            colObj.fnCreatedCell(nTd, dataObj)
+            col = nTd.clone().wrap('<p>').html();
+        } else if (colObj.fnCreatedCell && nTd) {
+            colObj.fnCreatedCell(nTd, dataObj)
+        } else if (colObj.data) {
+            col = dataObj[colObj.data]
+        }
+        return col
+    };
+
+    var toogleFullSize = function (tooglescreen, elems, settings) {
+        if (tooglescreen == "expand") {
+            var featList = ["z-index", "height", "position", "top", "left", "background"]
+            var newValue = ["1049", "100%", "fixed", "0", "0", "white"]
+            var oldCSS = {};
+            var newCSS = {};
+            for (var i = 0; i < featList.length; i++) {
+                oldCSS[featList[i]] = elems.css(featList[i])
+                newCSS[featList[i]] = newValue[i]
+            }
+            elems.data("oldCSS", oldCSS);
+            elems.data("tooglescreen", "compress");
+
+        } else {
+            var newCSS = elems.data("oldCSS");
+            elems.data("tooglescreen", "expand");
+
+        }
+        //apply css obj
+        $.each(newCSS, function (el) {
+            elems.css(el, newCSS[el])
+        });
+    }
+
+    var toogleContentSize = function (editorId, elemsID, el ,tooglescreen, elems, settings) {
+        var fileListColID = "fileListDiv_" + elemsID;
+        var each_file_id = "fileID_" + elemsID + "_" + el;
+        var icon = $('#fullscr-' + each_file_id).children()
+        if (tooglescreen == "expand") {
+            icon.attr("class", "fa fa-compress")
+        } else {
+            icon.attr("class", "fa fa-expand")
+        }
+        if (tooglescreen == "expand") {
+            $("#" + editorId ).css("height", $(window).height() - settings.heightIconBar.substring(0, settings.heightIconBar.length - 2) -45)
+            $("#" + fileListColID ).css("height", $(window).height() - settings.heightIconBar.substring(0, settings.heightIconBar.length - 2) -10)
+        } else {
+            $("#" + editorId).css("height", settings.heightEditor)
+            $("#" + fileListColID).css("height", settings.heightFileList) 
+        }
+        window[editorId].resize();
+    }
+
+
+    var bindEveHandlerIcon = function (fileid, elems, elemsID, settings) {
+        $('[data-toggle="tooltip"]').tooltip();
+        $('#fullscr-' + fileid).on('click', function (event) {
+            var tooglescreen = elems.data("tooglescreen");
+            var liAr = elems.find("li[tabid]");
+            for (var el = 0; el < liAr.length; el++) {
+                var editorID = $(liAr[el]).attr("editorID");
+                toogleContentSize(editorID, elemsID, el, tooglescreen, elems, settings);
+            }
+            toogleFullSize(tooglescreen, elems, settings);
+        });
+    }
+
+    var getColumnData = function (elemsID, dataObj, settings, height, lineHeight) {
+        var processParamDiv = ""
+        processParamDiv += getFileListCol(elemsID, dataObj, height, lineHeight, settings)
+        processParamDiv += getFileContentCol(elemsID, dataObj, height, lineHeight, settings)
+        return processParamDiv
+    }
+
+    var createAceEditor = function (editorId, script_modeId) {
+        //ace process editor
+        window[editorId] = ace.edit(editorId);
+        window[editorId].setTheme("ace/theme/tomorrow");
+        window[editorId].getSession().setMode("ace/mode/sh");
+        window[editorId].$blockScrolling = Infinity;
+        //If mode is exist, then apply it
+        var mode = $("#"+script_modeId).val();
+        if (mode && mode != "") {
+            window[editorId].session.setMode("ace/mode/" + mode);
+        }
+        $(function () {
+            $(document).on('change', script_modeId, function () {
+                var newMode = $(script_modeId).val();
+                window[editorId].session.setMode("ace/mode/" + newMode);
+            })
+        });
+    }
+
+    var setValueAceEditor = function (editorId, text){
+        window[editorId].setValue(text);
+        window[editorId].clearSelection();
+    }
+
+    var createModal = function () {
+        var infoModal = `
+<div id="tEditorInfo" class="modal fade" tabindex="-1" role="dialog">
+<div class="modal-dialog" role="document">
+<div class="modal-content">
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<h4 class="modal-title" id="tEditorInfoTitle">Title</h4>
+</div>
+<div class="modal-body">
+<p id="tEditorInfoText"></p>
+<form style="padding-right:10px;" class="form-horizontal">
+<div id="tEditorInfoNameDiv" class="form-group">
+<label class="col-sm-3 control-label">File Name</label>
+<div class="col-sm-9">
+<input id="tEditorInfoName" type="text" class="form-control">
+</div>
+</div>
+</form>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+<button id="tEditorInfoButton" type="button" class="btn btn-primary" data-dismiss="modal">Save</button>
+</div>
+</div>
+</div>
+</div>`;
+        if (document.getElementById("tEditorInfo") === null) {
+            $('body').append(infoModal);
+        }
+    }
+
+    var bindEventHandlerModal = function (elemsID){
+        $(function () {
+            $('#addIcon-' + elemsID).on('click', function (e) {
+                $("#tEditorInfoTitle").text("Create New File")
+                $("#tEditorInfoName").val("New File")
+                $("#tEditorInfoText").css("display","none");
+                $("#tEditorInfoNameDiv").css("display","inline");
+                $("#tEditorInfoButton").attr("class", "btn btn-primary save")
+                $("#tEditorInfoButton").text("Save")
+                $("#tEditorInfo").modal("show");
+            });
+            $('#renameIcon-' + elemsID).on('click', function (e) {
+                var activeLi = $("#fileListDiv_"+elemsID).find("li.active");
+                var filename = $(activeLi[0]).attr("id");
+                $("#tEditorInfo").removeData("li_element")
+                $("#tEditorInfo").data("li_element", activeLi)
+                $("#tEditorInfoTitle").text("Rename File")
+                $("#tEditorInfoName").val(filename)
+                $("#tEditorInfoText").css("display","none");
+                $("#tEditorInfoNameDiv").css("display","inline");
+                $("#tEditorInfoButton").attr("class", "btn btn-primary rename")
+                $("#tEditorInfoButton").text("Rename")
+                $("#tEditorInfo").modal("show");
+            });
+            $('#deleteIcon-' + elemsID).on('click', function (e) {
+                var activeLi = $("#fileListDiv_"+elemsID).find("li.active");
+                var filename = $(activeLi[0]).attr("id");
+                $("#tEditorInfo").removeData("li_element")
+                $("#tEditorInfo").data("li_element", activeLi)
+                $("#tEditorInfoTitle").text("Delete File")
+                $("#tEditorInfoNameDiv").css("display","none");
+                $("#tEditorInfoText").css("display","inline");
+                $("#tEditorInfoText").text('Are you sure you want to delete '+filename+'?')
+                $("#tEditorInfoButton").attr("class", "btn btn-primary delete")
+                $("#tEditorInfoButton").text("Delete")
+                $("#tEditorInfo").modal("show");
+            });
+            $("#tEditorInfo").on('click', '.rename', function (event) {
+                var newName = $("#tEditorInfoName").val();
+                var activeLi = $("#tEditorInfo").data("li_element")
+                if (activeLi[0] &&  newName){
+                    var activeSpan = $(activeLi[0]).find("span")
+                    if (activeSpan[0]){
+                        $(activeLi[0]).attr("id",newName) 
+                        $(activeSpan[0]).text(newName) 
+                        $("#tEditorInfo").modal("hide");
+                    }
+                }
+            });
+            $("#tEditorInfo").on('click', '.delete', function (event) {
+                var activeLi = $("#tEditorInfo").data("li_element")
+                if (activeLi[0]){
+                    var a = $(activeLi[0]).find("[href]")
+                    if (a[0]){
+                        var href = $(a[0]).attr("href")
+                        var hrefDiv = $("#"+elemsID).find(href)
+                        if (hrefDiv[0]){
+                            $(activeLi[0]).remove()
+                            $(hrefDiv[0]).remove()
+                            var liAr = $("#fileListDiv_"+elemsID).find('li[tabid]');
+                            if (liAr.length >0){
+                                var a = $(liAr[0]).find("a");
+                                if (a.length){
+                                    a.click()
+                                }
+                            }
+                            $("#tEditorInfo").modal("hide");
+                        }
+                    }
+                }
+
+            });
+            $("#tEditorInfo").on('click', '.save', function (event) {
+                var newName = $("#tEditorInfoName").val();
+                $("#"+elemsID).textEditor("fnAddFile", newName)
+            });
+        });
+    }
+
+
+    var afterAppendEachEl = function (text, el, elemsID, elems, settings){
+        var tabID = "fileTabs_" + elemsID + "_" + el;
+        var fileid = "fileID_" + elemsID + "_" + el;
+        var editorID = "editorID_" + elemsID + "_" + el;
+        var scriptMode = "scriptMode_" + elemsID + "_" + el;
+        bindEveHandlerIcon(fileid, elems, elemsID, settings);
+        createAceEditor(editorID, scriptMode);
+        setValueAceEditor(editorID, text);
+    }
+    var afterAppendPanel = function (dataObj, settings, elemsID, elems) {
+        $.each(dataObj, function (el) {
+            var text = dataObj[el].text
+            afterAppendEachEl(text, el, elemsID, elems, settings)
+        });
+        createModal()
+        bindEventHandlerModal(elemsID)
+    }
+
+    var getPanel = function (dataObj, settings, elemsID) {
+        if (dataObj) {
+            var id = "0"
+            var bodyDiv = getColumnData(elemsID, dataObj, settings, settings.heightBody, settings.lineHeightBody);
+            var wrapBody = '<div  id="' + elemsID + '-' + id + '" style="word-break: break-all;"><div class="panel-body" style="background-color:white; height:' + settings.heightBody + '; padding:0px;">' + bodyDiv + '</div>';
+            return '<div id="' + elemsID + 'PanelDiv-' + id + '" ><div class="panel" style="background-color:' + settings.backgroundcolorleave + '; margin-bottom:15px;">' + wrapBody + '</div></div>'
+        } else
+            return ""
+    }
+
+
+    var getData = function (settings) {
+        var res = null;
+        if (settings.ajax.url) {
+            $.ajax({
+                type: "POST",
+                url: settings.ajax.url,
+                data: settings.ajax.data,
+                datatype: "json",
+                async: false,
+                cache: false,
+                success: function (results) {
+                    res = results
+                },
+                error: function (errorThrown) {
+                    console.log("##Error: ");
+                    console.log(errorThrown)
+                }
+            });
+            return res
+        } else if (settings.ajax.data) {
+            if (settings.ajax.data === undefined || settings.ajax.data.length == 0) {
+                res = null;
+            } else {
+                res = settings.ajax.data;
+            }
+        }
+        return res;
+    }
+
+    }(jQuery));
+
+//--end of textEditor jquery plugin --
+//#####################################
+
 //template text for ace editor
 templategroovy = '//groovy example: \n\n println "Hello, World!"';
 templateperl = '#perl example: \n\n#!/usr/bin/perl \n print \'Hi there!\' . \'\\n\';';
@@ -10,7 +491,6 @@ createAceEditors("editorProHeader", "#script_mode_header") //ace process header 
 createAceEditors("editorProFooter", "#script_mode_footer") //ace process header editor
 createAceEditors("editorPipeHeader", "#script_mode_pipe_header") //ace pipeline header editor
 createAceEditors("editorPipeFooter", "#script_mode_pipe_footer") //ace pipeline footer editor
-createAceEditors("editorPipeConfig", "#script_mode_pipe_config") //ace pipeline config editor
 createAceEditors("pipelineSumEditor", "#pipelineSumEditor_mode") 
 
 function createAceEditors(editorId, script_modeId) {
@@ -55,13 +535,11 @@ $('#advOpt').on('show.bs.collapse', function () {
     var scriptPipeFooter = editorPipeFooter.getValue();
     editorPipeFooter.setValue(scriptPipeFooter);
     editorPipeFooter.clearSelection();
-    var scriptPipeConfig = editorPipeConfig.getValue();
-    editorPipeConfig.setValue(scriptPipeConfig);
-    editorPipeConfig.clearSelection();
 });
 
 // cleanProcessModal when modal is closed     
 function cleanProcessModal() {
+    $('#addProcessModal').removeData("prodata");
     $('#mParameters').remove();
     $('#inputGroup').remove();
     $('#inputTitle').remove();
@@ -102,7 +580,6 @@ function cleanProcessModal() {
 }
 
 function cleanInfoModal() {
-    $('#mProRev').removeAttr('info');
     $('#mName').removeAttr('disabled');
     $('#mVersion').removeAttr('disabled');
     $('#mDescription').removeAttr('disabled');
@@ -121,7 +598,7 @@ function cleanInfoModal() {
 }
 
 function refreshProcessModal(selProId) {
-    $(this).find('form').trigger('reset');
+    $("#addProcessModal").find('form').trigger('reset');
     cleanProcessModal();
     $('#mProRev').attr("prev", "-1");
     editor.setValue(templatesh);
@@ -152,7 +629,14 @@ function loadModalProGro() {
                 var optionGroup = new Option(param.group_name, param.id);
                 $("#mProcessGroup").append(optionGroup);
             }
-            $('#mProcessGroup').selectize({});
+            $('#mProcessGroup').selectize({
+                onChange:function(value){
+                    var selProGroupName = $("#mProcessGroup").text();
+                    var selProGroupID = value
+                    if (selProGroupName && selProGroupID){
+                        modifyProcessParentSideBar(selProGroupName, selProGroupID)
+                    }
+                }});
         },
         error: function (errorThrown) {
             alert("Error: " + errorThrown);
@@ -181,7 +665,16 @@ function loadPipeMenuGroup(newPipe) {
                 var optionGroup = new Option(param.group_name, param.id);
                 $("#pipeGroupAll").append(optionGroup);
             }
-            $('#pipeGroupAll').selectize({ dropdownParent: "body" });
+            $('#pipeGroupAll').selectize({ 
+                dropdownParent: "body",
+                onChange:function(value){
+                    var name = $("#pipeGroupAll").text();
+                    var groupID = value
+                    if (name && groupID){
+                        modifyPipelineParentSideBar(name, groupID)
+                    }
+                }
+            });
             $($("#pipeGroupAll").next().css("display", "inline-block").children()[0]).css("overflow", "unset");
 
         },
@@ -261,7 +754,8 @@ function loadSelectedProcess(selProcessId) {
         p: "getProcessData",
         "process_id": selProcessId
     })[0];
-    sMenuProGroupIdFirst = showProcess.process_group_id;
+    $('#addProcessModal').removeData("prodata");
+    $('#addProcessModal').data("prodata", showProcess);
     var processOwn = showProcess.own;
     //insert data into form
     var formValues = $('#addProcessModal').find('input, select, textarea');
@@ -366,16 +860,22 @@ function loadSelectedProcess(selProcessId) {
             }
         }
     }
-    if (showProcess.perms === "63" && usRole !== "admin") {
+    // disable modal based on permissions
+    if (usRole === "admin") {
+        $("#permsPro option[value='63']").attr("disabled", false);
+    } else if (processOwn === "1" && showProcess.perms === "63") {
         $('#permsPro').attr('disabled', "disabled");
         $('#publishPro').attr('disabled', "disabled");
+        //allow to create new revision by showing #createRevisionBut
         disableProModalPublic(selProcessId);
+    } else if (processOwn === "0") {
+        $('#mProActionsDiv').css('display', "none");
+        $('#proPermGroPubDiv').css('display', "none");
+        $('#createRevisionBut').css('display', "none");
+        disableProModal(selProcessId);
     }
     return [showProcess.perms, processOwn];
 };
-
-
-
 
 
 //Check if process is ever used in pipelines 
@@ -401,11 +901,7 @@ function checkProject(pipeline_id) {
 
     return checkProj
 }
-//Check if pipeline is ever used in projects that are group or public
-function checkProjectPublic(pipeline_id) {
-    var checkProj = getValues({ p: "checkProjectPublic", "pipeline_id": pipeline_id });
-    return checkProj
-}
+
 //Check if parameter is ever used in processes 
 function checkParameter(parameter_id) {
     var checkPara = getValues({ p: "checkParameter", "parameter_id": parameter_id });
@@ -583,11 +1079,7 @@ function addProParatoDBbyRev(data, startPoint, process_id, perms, group) {
             }
             //rgb(255, 255, 255) for activated Optional button
             if ($("#mInOptional-" + matchSPart).css('background-color') === 'rgb(255, 255, 255)') {
-                for (var n = startPoint; n < data.length; n++) {
-                    if (data[n].name === 'mInOptional-' + matchSPart) {
-                        dataToProcessParam.push({ name: "optional", value: "true" });
-                    }
-                }
+                dataToProcessParam.push({ name: "optional", value: "true" });
             }
             //for process parameters 
             for (var k = startPoint; k < data.length; k++) {
@@ -625,11 +1117,7 @@ function addProParatoDBbyRev(data, startPoint, process_id, perms, group) {
             }
             //rgb(255, 255, 255) for activated Optional button
             if ($("#mOutOptional-" + matchSPart).css('background-color') === 'rgb(255, 255, 255)') {
-                for (var n = startPoint; n < data.length; n++) {
-                    if (data[n].name === 'mOutOptional-' + matchSPart) {
-                        dataToProcessParam.push({ name: "optional", value: "true" });
-                    }
-                }
+                dataToProcessParam.push({ name: "optional", value: "true" });
             }
             //for process parameters 
             for (var k = startPoint; k < data.length; k++) {
@@ -789,7 +1277,7 @@ function checkDeletionPipe(pipeline_id) {
     //has selected pipeline ever used in projects?
     var checkProj = checkProject(pipeline_id);
     //has selected pipeline ever used in projects that user not owns?
-    var checkProjPublic = checkProjectPublic(pipeline_id);
+    var checkProjPublic = getValues({ p: "checkProjectPublic", "pipeline_id": pipeline_id }); 
     var numOfProject = checkProj.length;
     var numOfProjectPublic = checkProjPublic.length;
     if (numOfProject > 0 && numOfProjectPublic === 0) {
@@ -816,29 +1304,29 @@ function checkRevisionPipe(pipeline_id) {
     //has selected pipeline ever used in projects?
     var checkProj = checkProject(pipeline_id);
     //has selected pipeline ever used in projects that user not owns?
-    var checkProjPublic = checkProjectPublic(pipeline_id);
+    var checkProjPublic = getValues({ p: "checkProjectPublic", "pipeline_id": pipeline_id });
     var numOfProject = checkProj.length;
     var numOfProjectPublic = checkProjPublic.length;
     if (numOfProject > 0 && numOfProjectPublic === 0) {
         warnUserPipe = true;
-        warnPipeText = warnPipeText + 'This revision of pipeline already used in following project/projects: ';
+        warnPipeText += 'This revision of pipeline already used in following project/projects: ';
         $.each(checkProj, function (element) {
             if (element !== 0) {
-                warnPipeText = warnPipeText + ', ';
+                warnPipeText += ', ';
             }
-            warnPipeText = warnPipeText + '"' + checkProj[element].name + '"';
+            warnPipeText +=  '"' + checkProj[element].name + '"';
         });
         warnPipeText = warnPipeText + '</br></br>Your changes may effect the current run/runs. If you still want to save on existing revision, please click on "save on existing" button. </br></br>Otherwise you can save as a new revision by entering revision comment at below and clicking the save button.'
     } else if (numOfProjectPublic > 0) {
         warnUserPipe = true;
-        warnPipeText = warnPipeText + 'This revision of pipeline already used in following group/public projects: ';
+        warnPipeText +=  'This revision of pipeline already used in following group/public projects: ';
         $.each(checkProjPublic, function (element) {
             if (element !== 0) {
-                warnPipeText = warnPipeText + ', ';
+                warnPipeText += ', ';
             }
-            warnPipeText = warnPipeText + '"' + checkProjPublic[element].name + '"';
+            warnPipeText +=  '"' + checkProjPublic[element].name + '"';
         });
-        warnPipeText = warnPipeText + '</br></br>You can save as a new revision by entering revision comment at below and clicking the save button.'
+        warnPipeText += '</br></br>You can save as a new revision by entering revision comment at below and clicking the save button.'
     }
 
     return [warnUserPipe, warnPipeText, numOfProject, numOfProjectPublic];
@@ -885,47 +1373,6 @@ function checkRevisionProc(data, proID) {
     return [warnUser, infoText, numOfProcess, numOfProcessPublic, numOfProPipePublic];
 }
 
-function checkPermissionProc(proID) {
-    var warnUser = false;
-    var infoText = '';
-    //has process ever used in other pipelines which are group or public?
-    var checkPipe = getValues({ p: "checkPipelinePerm", "process_id": proID });
-    var numOfPipelines = checkPipe.length;
-    if (numOfPipelines > 0) {
-        warnUser = true;
-        infoText = infoText + 'It is not allowed to change permission of current revision since this revision of process exists in following group/public pipelines: '
-        $.each(checkPipe, function (element) {
-            if (element !== 0) {
-                infoText = infoText + ', ';
-            }
-            infoText = infoText + '"' + checkPipe[element].name + '"';
-        });
-    }
-
-    return [warnUser, infoText, numOfPipelines];
-}
-
-function checkPermissionPipe(pipeline_id) {
-    var warnUser = false;
-    var infoText = '';
-    //has pipeline ever used in other project_pipeline which are group or public?
-    var checkProjectPipeline = getValues({ p: "checkProjectPipePerm", "pipeline_id": pipeline_id });
-    var numOfProjects = checkProjectPipeline.length;
-    if (numOfProjects > 0) {
-        warnUser = true;
-        infoText = infoText + 'It is not allowed to change permission of current revision since this revision of pipeline exists in following group/public runs: '
-        $.each(checkProjectPipeline, function (element) {
-            if (element !== 0) {
-                infoText = infoText + ', ';
-            }
-            infoText = infoText + '"' + checkProjectPipeline[element].name + '"';
-        });
-    }
-
-    return [warnUser, infoText, numOfProjects];
-}
-
-
 function prepareProParam(data, startPoint, typeInOut) {
     if (typeInOut === 'inputs') {
         var searchFpart = 'mInputs';
@@ -960,15 +1407,36 @@ function prepareProParam(data, startPoint, typeInOut) {
     return proParams;
 }
 
-function updateSideBar(sMenuProIdFirst, sMenuProIdFinal, sMenuProGroupIdFirst, sMenuProGroupIdFinal) {
+function insertSidebarProcess(sideGroupID, proID, name){
+    var shortName = truncateName(name, 'sidebarMenu')
+    $(sideGroupID).append('<li> <a data-toggle="modal" origin="'+name+'" data-target="#addProcessModal" data-backdrop="false" href="" ondragstart="dragStart(event)" ondrag="dragging(event)" class="processItems" draggable="true" id="' + proID + '"> <i class="fa fa-angle-double-right"></i>' + shortName + '</a></li>');
+}
 
-    document.getElementById(sMenuProIdFirst).setAttribute('id', sMenuProIdFinal);
-    var PattMenu = /(.*)@(.*)/; //Map_Tophat2@11
-    var nMenuProName = sMenuProIdFinal.replace(PattMenu, '$1');
-    document.getElementById(sMenuProIdFinal).innerHTML = '<i class="fa fa-angle-double-right"></i>' + truncateName(nMenuProName, 'sidebarMenu');
-    if (sMenuProGroupIdFirst !== sMenuProGroupIdFinal) {
-        document.getElementById(sMenuProIdFinal).remove();
-        $('#side-' + sMenuProGroupIdFinal).append('<li> <a data-toggle="modal" data-target="#addProcessModal" data-backdrop="false" href="" ondragstart="dragStart(event)" ondrag="dragging(event)" draggable="true" id="' + sMenuProIdFinal + '"> <i class="fa fa-angle-double-right"></i>' + truncateName(nMenuProName, 'sidebarMenu') + '</a></li>');
+function updateSideBar(sMenuProIdFinal, sMenuProGroupIdFinal) {
+    var prodata = $('#addProcessModal').data("prodata");
+    var oldProGroupId = prodata.process_group_id
+    var oldProName = prodata.name 
+    var oldProID = prodata.id;
+    // find process item in the sidebar.
+    // prodata.name + "@" + id should be in the sidebar
+    var sMenuProIdFirst = ""
+    var revisions = getValues({ p: "getProcessRevision", "process_id": oldProID });
+    for (var k = 0; k < revisions.length; k++) {
+        sMenuProIdFirst = oldProName+"@"+revisions[k].id;
+        if ($(document.getElementById(sMenuProIdFirst)).length > 0) {
+            if ($(document.getElementById(sMenuProIdFirst)).hasClass( "processItems" )){
+                $(document.getElementById(sMenuProIdFirst)).attr("id", sMenuProIdFinal);
+                var PattMenu = /(.*)@(.*)/; //Map_Tophat2@11
+                var nMenuProName = sMenuProIdFinal.replace(PattMenu, '$1');
+                $(document.getElementById(sMenuProIdFinal)).html('<i class="fa fa-angle-double-right"></i>' + truncateName(nMenuProName, 'sidebarMenu'));
+                if (oldProGroupId !== sMenuProGroupIdFinal) {
+                    $(document.getElementById(sMenuProIdFinal)).remove();
+                    insertSidebarProcess("#side-"+sMenuProGroupIdFinal, sMenuProIdFinal, nMenuProName)
+                }
+                break; 
+            }
+
+        }
     }
 }
 
@@ -1030,12 +1498,6 @@ function disableProModal(selProcessId) {
     $('#createRevision').css('display', "none");
     $('#createRevisionBut').css('display', "none");
     $('#deleteRevision').css('display', "none");
-    if (gNumInfo.match(/-/)) { //for pipeline module windows
-        $('#selectProcess').css("display", "none")
-    } else {
-        $('#selectProcess').css('display', "inline");
-    }
-
 };
 //disable when it is selected as everyone
 function disableProModalPublic(selProcessId) {
@@ -1174,8 +1636,8 @@ function createRevision() {
                         var newProcess_id = s.id;
                         //update process link into sidebar menu
                         sMenuProIdFinal = proName + '@' + newProcess_id;
-                        updateSideBar(sMenuProIdFirst, sMenuProIdFinal, sMenuProGroupIdFirst, sMenuProGroupIdFinal);
-                        //                        refreshDataset();
+                        updateSideBar(sMenuProIdFinal, sMenuProGroupIdFinal);
+                        refreshDataset();
                         $('#addProcessModal').modal('hide');
                     },
                     error: function (errorThrown) {
@@ -1195,7 +1657,6 @@ function prepareInfoModal() {
     $('#mProActionsDiv').css('display', "none");
     $('#proPermGroPubDiv').css('display', "none");
     $('#mProRevSpan').css('display', "inline");
-    $('#mProRev').attr('info', "info");
     $('#createRevisionBut').css('display', "none");
 }
 
@@ -1211,12 +1672,57 @@ function updateGitTitle(github_username, github_repo, commit_id){
 
 function updateMarkdown(text, targetDiv){
     var target = document.getElementById(targetDiv)
-    var converter = new showdown.Converter();
+    var converter = new showdown.Converter({tables: true});
     var html = converter.makeHtml(text);
     target.innerHTML = html;
 }
 
+//[{"filename":"nextflow.config", "text":editorScriptPipeConfig}]
+//\n//~@:~\n@~:"filename"\n//~@:~\ntext
+function createMultiConfig(allConf){
+    var ret    = []
+    //if empty or null, then show as empty nextflow.config
+    if (allConf === null || !allConf) {
+        ret.push ({"filename": "nextflow.config", "text": ""})
+    } else {
+        allConf=decodeHtml(allConf)
+        var checkLabel = false;
+        var sep    = "\n//~@:~\n";
+        var confAr = allConf.split(sep)
+        var filename = "";
+        for (var i = 0; i < confAr.length; i++) {
+            if (confAr[i].match(/@~:"(.*)"/)){
+                filename = confAr[i].match(/@~:"(.*)"/)[1]
+                if (filename && confAr[i+1] != null && typeof confAr[i+1] !== 'undefined' ){
+                    checkLabel = true
+                    ret.push ({"filename": filename, "text": confAr[i+1]})
+                    continue;
+                }
+            }
+        }
+        //if header info is not found, then show as nextflow.config
+        if (!checkLabel){
+            ret.push ({"filename": "nextflow.config", "text": allConf})
+        }
+    }
+    return ret;
+}
 
+function combineTextEditor(divID){
+    var ret = "";
+    var sep    = "\n//~@:~\n";
+    var label  = "@~:";
+    var liAr = $("#fileListDiv_"+divID).find("li");
+    for (var i = 0; i < liAr.length; i++) {
+        var filename = $(liAr[i]).attr("id");
+        var editorID = $(liAr[i]).attr("editorID");
+        if (editorID && filename){
+            var script = window[editorID].getValue();
+            ret += sep + label + '"'+filename+'"' + sep +script + sep
+        }
+    }
+    return encodeURIComponent(ret)
+}
 
 function loadPipelineDetails(pipeline_id, usRole) {
     window.pipeObj = {};
@@ -1256,7 +1762,6 @@ function loadPipelineDetails(pipeline_id, usRole) {
                     $('#confirmPipeSum').remove();
                     editorPipeHeader.setReadOnly(true);
                     editorPipeFooter.setReadOnly(true);
-                    editorPipeConfig.setReadOnly(true);
                     $('#permsPipeDiv').css('display', 'none');
                     $('#groupSelPipeDiv').css('display', 'none');
                     $('#publishPipeDiv').css('display', 'none');
@@ -1264,7 +1769,6 @@ function loadPipelineDetails(pipeline_id, usRole) {
                     $('#pipeMenuGroupBottom').css('display', 'none');
                 }
                 if (usRole === "admin") {
-                    $('#advOptDiv').css('display', 'inline');
                     $('#pinMainPage').css("display", "inline");
                     $('#savePipeline').css('display', 'inline');
                     $('#permsPipeDiv').css('display', 'inline');
@@ -1286,6 +1790,7 @@ function loadPipelineDetails(pipeline_id, usRole) {
                     $("#script_mode_pipe_footer").trigger("change");
                 }
                 //load header and foother script
+                var editorScriptPipeConfig = ""
                 if (pData[0].script_pipe_header !== "" && pData[0].script_pipe_header !== null) {
                     var editorScriptPipeHeader = decodeHtml(pData[0].script_pipe_header);
                     editorPipeHeader.setValue(editorScriptPipeHeader);
@@ -1296,11 +1801,17 @@ function loadPipelineDetails(pipeline_id, usRole) {
                     editorPipeFooter.setValue(editorScriptPipeFooter);
                     editorPipeFooter.clearSelection();
                 }
-                if (pData[0].script_pipe_config !== "" && pData[0].script_pipe_config !== null) {
-                    var editorScriptPipeConfig = decodeHtml(pData[0].script_pipe_config);
-                    editorPipeConfig.setValue(editorScriptPipeConfig);
-                    editorPipeConfig.clearSelection();
-                }
+                editorScriptPipeConfig = createMultiConfig(pData[0].script_pipe_config);
+
+                $("#pipelineFiles").textEditor({
+                    ajax: {
+                        data: editorScriptPipeConfig
+                    },
+                    backgroundcolorenter: "#ced9e3",
+                    backgroundcolorleave: "#ECF0F4",
+                    height: "600px"
+                });
+
                 //load user groups
                 var allUserGrp = getValues({ p: "getUserGroups" });
                 $.each(allUserGrp, function (i, item) {
@@ -1386,7 +1897,7 @@ function loadPipelineDetails(pipeline_id, usRole) {
 function duplicateProcessRev() {
     var processID = $('#mIdPro').val();
     if (processID !== '') {
-        var proName = $('#mName').val() + "-copy";
+        var proName = $('#mName').val() + "_copy";
         var proGroId = $('#mProcessGroup').val();
         var maxProcess_gid = getValues({ p: "getMaxProcess_gid" })[0].process_gid;
         var newProcess_gid = parseInt(maxProcess_gid) + 1;
@@ -1399,7 +1910,10 @@ function duplicateProcessRev() {
         if (s) {
             var process_id = s.id;
             //add process link into sidebar menu
-            $('#side-' + proGroId).append('<li> <a data-toggle="modal" data-target="#addProcessModal" data-backdrop="false" href="" ondragstart="dragStart(event)" ondrag="dragging(event)" draggable="true" id="' + proName + '@' + process_id + '"> <i class="fa fa-angle-double-right"></i>' + truncateName(proName, 'sidebarMenu') + '</a></li>');
+            console.log("#side-"+proGroId)
+            console.log(proName + '@' + process_id)
+            console.log(truncateName(proName, 'sidebarMenu'))
+            insertSidebarProcess("#side-"+proGroId, proName + '@' + process_id, proName)
             refreshDataset();
             $('#addProcessModal').modal('hide');
         }
@@ -1489,7 +2003,7 @@ function loadSelectedPipeline(pipeline_id) {
                         if (oData.process_id.match("p")) {
                             $(nTd).text(oData.process_name);
                         } else {
-                            $(nTd).html("<a data-toggle='modal' data-target='#addProcessModal' data-backdrop='false' href='' pipeMode='true' id='" + oData.process_name + "@" + oData.process_id + "'>" + '<span class="txtlink">' + oData.process_name + "</span>" + "</a>");
+                            $(nTd).html("<a data-toggle='modal' data-target='#addProcessModal' data-backdrop='false' href='' class='pipeMode' pipeMode='true' id='" + oData.process_name + "@" + oData.process_id + "'>" + '<span class="txtlink">' + oData.process_name + "</span>" + "</a>");
                         }
                     }
                 }, {
@@ -1543,7 +2057,7 @@ $("#selectPipelineModal").on('click', '#selectPipeline', function (event) {
         var translateY = d3main.translate[1];
         var xPos = $('#selectPipeline').attr("xCoor")
         var yPos = $('#selectPipeline').attr("yCoor")
-        piID = lastPipeID
+        piID = lastPipeID;
         var newMainGnum = "pObj" + gNum;
         window[newMainGnum] = {};
         window[newMainGnum].piID = piID;
@@ -1553,18 +2067,35 @@ $("#selectPipelineModal").on('click', '#selectPipeline', function (event) {
         $.extend(window.pipeObj, newPipeObj);
         window[newMainGnum].sData = [window.pipeObj["main_pipeline_" + piID]]
         window[newMainGnum].lastPipeName = pName;
+        var lastGNum = gNum;
         // create new SVG workplace inside panel, if not added before
         openSubPipeline(piID, window[newMainGnum]);
         // add pipeline circle to main workplace
         addPipeline(piID, xPos, yPos, pName, window, window[newMainGnum]);
+        recoverEdges(gNumInfo, "", lastGNum);
+        autosave();
     }
     $('#selectPipelineModal').modal('hide');
 });
 
-
+function saveCircleCoordinates(selProcessId){
+    if (gNumInfo.match(/-/)) { //for pipeline module windows
+        var coorProRaw = d3.select("#g" + gNumInfo)[0][0].attributes.transform.value;
+    } else {
+        var coorProRaw = d3.select("#g-" + gNumInfo)[0][0].attributes.transform.value;
+    }
+    var PattCoor = /translate\((.*),(.*)\)/; //417.6,299.6
+    var xProCoor = coorProRaw.replace(PattCoor, '$1');
+    var yProCoor = coorProRaw.replace(PattCoor, '$2');
+    $('#selectProcess').attr("fProID", selProcessId);
+    $('#selectProcess').attr("gNum", gNumInfo);
+    $('#selectProcess').attr("xCoor", xProCoor);
+    $('#selectProcess').attr("yCoor", yProCoor);
+}
 
 
 $(document).ready(function () {
+    filterSideBar([]); //trigger filter function of sidebar for admin filtering
     var usRole = callusRole();
     pipeline_id = $('#pipeline-title').attr('pipelineid');
     //fill pipeline groups
@@ -1591,10 +2122,18 @@ $(document).ready(function () {
             $('#groupSelPro').append($('<option>', { value: item.id, text : item.name }));
         });
         loadPipeMenuGroup(true);
+        $("#pipelineFiles").textEditor({
+            ajax: {
+                data: [{"filename":"nextflow.config", "text":""}]
+            },
+            backgroundcolorenter: "#ced9e3",
+            backgroundcolorleave: "#ECF0F4",
+            height: "600px"
+        });
     }
 
     //Make modal draggable    
-    $('.modal-dialog').draggable({ cancel: 'p, input, textarea, select, #editordiv, #editorHeaderdiv, #editorFooterdiv, button, span, a, #amzTable' });
+    $('.modal-dialog').draggable({ cancel: 'p, input, textarea, select, #editordiv, #editorHeaderdiv, #editorFooterdiv, button, span, a, #amazonTable, #googleTable' });
 
 
 
@@ -1629,7 +2168,9 @@ $(document).ready(function () {
             var translateY = d3main.translate[1];
             var xCor = $('#selectProcess').attr("xCoor") * scale + 30 - r - ior + translateX;
             var yCor = $('#selectProcess').attr("yCoor") * scale + 10 - r - ior + translateY;
+            var lastGNum = gNum;
             addProcess(processDat, xCor, yCor);
+            recoverEdges(gNumInfo, lastProID, lastGNum);
         }
         autosave();
         $('#addProcessModal').modal('hide');
@@ -1673,42 +2214,7 @@ $(document).ready(function () {
         }
     };
 
-    $("#permsPro").click(function () {
-        lastSel = $("#permsPro option:selected");
-    });
-    $("#permsPipe").click(function () {
-        lastSelPipe = $("#permsPipe option:selected");
-    });
-    $(function () {
-        $(document).on('change', '#permsPipe', function (event) {
-            var selPerm = $(this).val();
-            var pipeline_id = $('#pipeline-title').attr('pipelineid');
-            if (pipeline_id !== "" && selPerm == "3") {
-                var warnUser = false;
-                var infoText = '';
-                var numOfRuns = '';
-                //check if pipeline ever used in projects_pipelines that and have permission higher than 3
-                //then not allowed to change
-                [warnUser, infoText, numOfRuns] = checkPermissionPipe(pipeline_id);
-                if (warnUser === true) {
-                    lastSelPipe.prop("selected", true);
-                    // warnDelete process modal 
-                    $('#warnDelete').off();
-                    $('#warnDelete').on('show.bs.modal', function (event) {
-                        $(this).find('form').trigger('reset');
-                        $('#warnDelText').html(infoText);
-                    });
-                    $('#warnDelete').modal('show');
-                } else {
-                    autosaveDetails();
-                }
-            } else {
-                autosaveDetails();
-            }
-        })
-    });
 
-    //xxxxx
     $(function () {
         $('#gitConsoleModal').on('show.bs.modal', function (e) {
             $(this).find('form').trigger('reset');
@@ -1777,6 +2283,7 @@ $(document).ready(function () {
             var stop = "";
             [formObj, stop] = createFormObj(formValues, requiredFields)
             if (stop === false) {
+                showLoadingDiv("gitConsoleDiv");
                 var pipeline_id = $('#pipeline-title').attr('pipelineid');
                 if (pipeline_id){
                     var dnData   = encodeURIComponent(exportPipeline())
@@ -1792,7 +2299,6 @@ $(document).ready(function () {
                         type: "POST",
                         url: "ajax/ajaxquery.php",
                         data: formObj,
-                        beforeSend: function () { showLoadingDiv("gitConsoleDiv"); },
                         complete: function () {
                             hideLoadingDiv("gitConsoleDiv");
                         },
@@ -1881,44 +2387,14 @@ $(document).ready(function () {
         });
     });
 
-    $(function () {
-        $(document).on('change', '#permsPro', function (event) {
-            var selPerm = $(this).val();
-            var proID = $('#mIdPro').val();
-            if (proID !== "" && selPerm == "3") {
-                var warnUser = false;
-                var infoText = '';
-                var numOfPipelines = '';
-                //check if process ever used in pipelines that and have permission higher than 3
-                //then not allowed to change
-                [warnUser, infoText, numOfPipelines] = checkPermissionProc(proID);
-                if (warnUser === true) {
-                    lastSel.prop("selected", true);
-                    // warnDelete process modal 
-                    $('#warnDelete').off();
-                    $('#warnDelete').on('show.bs.modal', function (event) {
-                        $(this).find('form').trigger('reset');
-                        $('#warnDelText').html(infoText);
-                    });
-                    $('#warnDelete').modal('show');
-                }
-            }
-        })
-    });
 
     $(function () {
         $(document).on('change', '.mRevChange', function (event) {
-            var infoAttr = $(this).attr("info");
             var id = $(this).attr("id");
             var prevParId = $("#" + id).attr("prev");
             var selProId = $("#" + id + " option:selected").val();
-            if (prevParId !== '-1' && infoAttr === 'info') {
-                refreshProcessModal(selProId);
-                prepareInfoModal();
-                disableProModal(selProId);
-                $('#selectProcess').attr("lastProID", selProId);
-                $('#mProRev').attr('info', "info");
-            } else if (prevParId !== '-1') {
+            $('#selectProcess').attr("lastProID", selProId);
+            if (prevParId !== '-1') {
                 refreshProcessModal(selProId);
             }
             $("#" + id).attr("prev", selProId);
@@ -2003,67 +2479,34 @@ $(document).ready(function () {
         loadModalParam();
 
         var button = $(event.relatedTarget);
-        if (button.attr('id') === 'addprocess') {
+        var checkAddprocess = button.attr('id') === 'addprocess';
+        var checkEditprocess = button.is('a.processItems') === true;
+        var checkPipeModuleModal = button.is('a.pipeMode') === true;
+        var checkSettingsIcon = !checkAddprocess && !checkEditprocess && !checkPipeModuleModal;
+        if (checkAddprocess) {
             $('#processmodaltitle').html('Add New Process');
             $('#proPermGroPubDiv').css('display', "inline");
-
-        } else if (button.is('a') === true) { //Edit/Delete Process
-            $('#processmodaltitle').html('Edit/Delete Process');
+        } else if (checkEditprocess || checkSettingsIcon || checkPipeModuleModal) { //Edit/Delete Process
             $('#mProActionsDiv').css('display', "inline");
             $('#mProRevSpan').css('display', "inline");
             $('#proPermGroPubDiv').css('display', "inline");
-
-            delProMenuID = button.attr('id');
-            sMenuProIdFirst = button.attr('id');
-            var pipeMode = button.attr('pipeMode');
-            var PattPro = /(.*)@(.*)/; //Map_Tophat2@11
-            var selProcessId = button.attr('id').replace(PattPro, '$2');
-            loadModalRevision(selProcessId);
             var processOwn = "";
             var proPerms = "";
-            [proPerms, processOwn] = loadSelectedProcess(selProcessId);
-            if (pipeMode) {
-                $('#permsPro').attr('disabled', "disabled");
-                $('#publishPro').attr('disabled', "disabled");
-                disableProModalPublic(selProcessId);
-                $('#createRevision').css('display', "none");
-                $('#createRevisionBut').css('display', "none");
-                $('#mProActionsDiv').css('display', "none");
-            } else if (usRole === "admin") {
-                $("#permsPro option[value='63']").attr("disabled", false);
-            } else if (processOwn === "1" && proPerms === "63" && usRole !== "admin") {
-                $('#permsPro').attr('disabled', "disabled");
-                $('#publishPro').attr('disabled', "disabled");
-                disableProModalPublic(selProcessId);
-            }
-            // if user is the owner of the process (processOwn=1) allowed for edit and delete.
-            else if (processOwn === "0" && usRole !== "admin") {
-                setTimeout(function () { prepareInfoModal(); }, 0);
-                var pName = $('#mName').val();
-                $('#selectProcess').attr("pName", pName);
-                setTimeout(function () { disableProModal(selProcessId); }, 1);
-            }
-        } else { //Info Modal 
-            prepareInfoModal();
-            var selProcessId = infoID;
-            $('#selectProcess').attr("fProID", selProcessId);
-            $('#selectProcess').attr("gNum", gNumInfo);
-            if (gNumInfo.match(/-/)) { //for pipeline module windows
-                var coorProRaw = d3.select("#g" + gNumInfo)[0][0].attributes.transform.value;
-            } else {
-                var coorProRaw = d3.select("#g-" + gNumInfo)[0][0].attributes.transform.value;
-            }
-            var PattCoor = /translate\((.*),(.*)\)/; //417.6,299.6
-            var xProCoor = coorProRaw.replace(PattCoor, '$1');
-            var yProCoor = coorProRaw.replace(PattCoor, '$2');
-            $('#selectProcess').attr("xCoor", xProCoor);
-            $('#selectProcess').attr("yCoor", yProCoor);
-
+            var selProcessId = "";
+            if (checkEditprocess || checkPipeModuleModal){
+                $('#processmodaltitle').html('Edit/Delete Process');
+                $('#selectProcess').css("display", "none")
+                var PattPro = /(.*)@(.*)/; //Map_Tophat2@11
+                selProcessId = button.attr('id').replace(PattPro, '$2');
+            } else if (checkSettingsIcon){
+                $('#processmodaltitle').html('Select Process Revision');
+                $('#selectProcess').css("display", "inline")
+                selProcessId = infoID;
+                saveCircleCoordinates(selProcessId)
+            } 
             loadModalRevision(selProcessId);
-            loadSelectedProcess(selProcessId);
-            var pName = $('#mName').val();
-            $('#selectProcess').attr("pName", pName);
-            setTimeout(function () { disableProModal(selProcessId); }, 1);
+            [proPerms, processOwn] = loadSelectedProcess(selProcessId);
+            $('#selectProcess').attr("pName", $('#mName').val());
         }
     });
 
@@ -2077,13 +2520,24 @@ $(document).ready(function () {
     $('#confirmModal').on('show.bs.modal', function (event) {
         var button = $(event.relatedTarget);
         if (button.attr('id') === 'deleteRevision') {
+            $("#deleteBtn").text("Delete")
             $('#deleteBtn').attr('class', 'btn btn-primary delprocess');
             $('#confirmModalText').html('Are you sure you want to delete this process revision?');
         } else if (button.attr('id') === 'delPipeline') {
+            $("#deleteBtn").text("Delete")
             $('#deleteBtn').attr('class', 'btn btn-primary delpipeline');
             $('#confirmModalText').html('Are you sure you want to delete this pipeline?');
+        } else if (button.attr('id') === 'dupPipeline') {
+            $("#deleteBtn").text("Duplicate")
+            $('#deleteBtn').attr('class', 'btn btn-primary dupPipeline');
+            $('#confirmModalText').html("Are you sure you want to duplicate this pipeline? </br></br> * It is not suggested to use this feature, unless you are planning to create custom pipeline.");
         }
     });
+
+    $('#confirmModal').on('click', '.dupPipeline', function (event) {
+        $('#confirmModal').modal('hide');
+        duplicatePipeline();
+    })
 
     $('#confirmModal').on('click', '.delpipeline', function (event) {
         var pipeline_id = $('#pipeline-title').attr('pipelineid');
@@ -2109,21 +2563,10 @@ $(document).ready(function () {
 
     $('#confirmModal').on('click', '.delprocess', function (event) {
         var processIdDel = $('#mIdPro').val();
-        var disableCheck = $('#mName').attr('disabled');
-        if (disableCheck === 'disabled') {
-            $('#mName').removeAttr('disabled'); //temporary remove disabled attribute for serializeArray().
-            var formValues = $('#addProcessModal').find('input, select, textarea');
-            var data = formValues.serializeArray();
-            $('#mName').attr('disabled', "disabled");
-        } else {
-            var formValues = $('#addProcessModal').find('input, select, textarea');
-            var data = formValues.serializeArray();
-        }
-        var proID = data[1].value;
-        var proName = data[2].value;
+        var proName = $('#mName').val()
         var warnUser = false;
         var infoText = '';
-        [warnUser, infoText] = checkDeletion(proID);
+        [warnUser, infoText] = checkDeletion(processIdDel);
         if (warnUser === true) {
             $('#warnDelete').off();
             $('#warnDelete').on('show.bs.modal', function (event) {
@@ -2132,13 +2575,24 @@ $(document).ready(function () {
             $('#warnDelete').modal('show');
         } else if (warnUser === false) {
             var revisions = getValues({ p: "getProcessRevision", "process_id": processIdDel });
-            var removedRev = [];
+            var delProMenuID = ""
+            var tmp = ""
+            //find process id in the sidebar menu
+            for (var k = 0; k < revisions.length; k++) {
+                tmp = proName+"@"+revisions[k].id;
+                if ($(document.getElementById(tmp)).length > 0) {
+                    if ($(document.getElementById(tmp)).hasClass( "processItems" )){
+                        delProMenuID = tmp;
+                        break; 
+                    }
+                }
+            }
+            var delProc = getValues({ p: "removeProcess", "id": processIdDel });
             if (revisions.length === 1) {
-                var delProce = getValues({ p: "removeProcess", "id": processIdDel });
-                var delSideMenuNode = document.getElementById(delProMenuID).parentNode;
-                delSideMenuNode.parentNode.removeChild(delSideMenuNode);
-                delProMenuID = '';
+                $(document.getElementById(delProMenuID)).parent().remove()
             } else if (revisions.length > 1) {
+                var removedRev = [];
+                var revMaxId = "";
                 //remove the selected revision from list
                 for (var k = 0; k < revisions.length; k++) {
                     if (revisions[k].id !== processIdDel) {
@@ -2154,14 +2608,11 @@ $(document).ready(function () {
                 //find the id of the process which has the maximum rev_id
                 for (var k = 0; k < removedRev.length; k++) {
                     if (removedRev[k].rev_id === max) {
-                        var revMaxId = removedRev[k].id
-                        }
+                        revMaxId = removedRev[k].id
+                    }
                 }
-                var PattPro = /(.*)@(.*)/; //Map_Tophat2@11
-                var delProName = delProMenuID.replace(PattPro, '$1');
-                var newMenuID = delProName + '@' + revMaxId;
-                var delProce = getValues({ p: "removeProcess", "id": processIdDel });
-                document.getElementById(delProMenuID).id = newMenuID;
+                var newMenuID = proName + '@' + revMaxId;
+                $(document.getElementById(delProMenuID)).attr("id",newMenuID)
             }
             $('#addProcessModal').modal('hide');
         }
@@ -2203,8 +2654,6 @@ $(document).ready(function () {
             var scripteditor = getScriptEditor('editor');
             var scripteditorProHeader = getScriptEditor('editorProHeader');
             var scripteditorProFooter = getScriptEditor('editorProFooter');
-            //            var maxProcess_gid = getValues({ p: "getMaxProcess_gid" })[0].process_gid;
-            //            var newProcess_gid = parseInt(maxProcess_gid) + 1;
             var script_mode = $('#script_mode').val();
             var script_mode_header = $('#script_mode_header').val();
             dataToProcess.push({ name: "perms", value: perms });
@@ -2229,7 +2678,7 @@ $(document).ready(function () {
                     success: function (s) {
                         var process_id = s.id;
                         //add process link into sidebar menu
-                        $('#side-' + proGroId).append('<li> <a data-toggle="modal" data-target="#addProcessModal" data-backdrop="false" href="" ondragstart="dragStart(event)" ondrag="dragging(event)" draggable="true" id="' + proName + '@' + process_id + '"> <i class="fa fa-angle-double-right"></i>' + truncateName(proName, 'sidebarMenu') + '</a></li>');
+                        insertSidebarProcess("#side-"+proGroId, proName + '@' + process_id, proName);
                         var startPoint = 5; //first object in data array where inputparameters starts.
                         addProParatoDB(data, startPoint, process_id, perms, group);
                         refreshDataset();
@@ -2298,7 +2747,7 @@ $(document).ready(function () {
                         async: true,
                         success: function (s) {
                             //update process link into sidebar menu
-                            updateSideBar(sMenuProIdFirst, sMenuProIdFinal, sMenuProGroupIdFirst, sMenuProGroupIdFinal);
+                            updateSideBar(sMenuProIdFinal, sMenuProGroupIdFinal);
                             var startPoint = 6; //first object in data array where inputparameters starts.
                             var ppIDinputList;
                             var ppIDoutputList;
@@ -2370,7 +2819,7 @@ $(document).ready(function () {
                             async: true,
                             success: function (s) {
                                 //update process link into sidebar menu
-                                updateSideBar(sMenuProIdFirst, sMenuProIdFinal, sMenuProGroupIdFirst, sMenuProGroupIdFinal);
+                                updateSideBar(sMenuProIdFinal, sMenuProGroupIdFinal);
                                 var startPoint = 6; //first object in data array where inputparameters starts.
                                 var ppIDinputList;
                                 var ppIDoutputList;
@@ -2437,7 +2886,7 @@ $(document).ready(function () {
                                     var newProcess_id = s.id;
                                     //update process link into sidebar menu
                                     sMenuProIdFinal = proName + '@' + newProcess_id;
-                                    updateSideBar(sMenuProIdFirst, sMenuProIdFinal, sMenuProGroupIdFirst, sMenuProGroupIdFinal);
+                                    updateSideBar(sMenuProIdFinal, sMenuProGroupIdFinal);
                                     var startPoint = 6; //first object in data array where inputparameters starts.
                                     addProParatoDBbyRev(data, startPoint, newProcess_id, "3", group);
                                     refreshDataset();
@@ -2460,67 +2909,69 @@ $(document).ready(function () {
     $(function () {
         $(document).on('change', '.mParChange', function () {
             var id = $(this).attr("id");
-            var Patt = /m(.*)puts-(.*)/;
-            var type = id.replace(Patt, '$1'); //In or Out
-            var col1init = "m" + type + "puts"; //column1 initials
-            var col2init = "m" + type + "Name";
-            var col3init = "m" + type + "Namedel";
-            var col4init = "m" + type + "OptBut";
-            var col5init = "m" + type + "Opt";
-            var col6init = "m" + type + "Closure";
-            var col7init = "m" + type + "Optdel";
-            var col8init = "m" + type + "Optional";
-            var col9init = "m" + type + "RegBut";
-            var col10init = "m" + type + "Reg";
-            var col11init = "m" + type + "Regdel";
+            if (id){
+                var Patt = /m(.*)puts-(.*)/;
+                var type = id.replace(Patt, '$1'); //In or Out
+                var col1init = "m" + type + "puts"; //column1 initials
+                var col2init = "m" + type + "Name";
+                var col3init = "m" + type + "Namedel";
+                var col4init = "m" + type + "OptBut";
+                var col5init = "m" + type + "Opt";
+                var col6init = "m" + type + "Closure";
+                var col7init = "m" + type + "Optdel";
+                var col8init = "m" + type + "Optional";
+                var col9init = "m" + type + "RegBut";
+                var col10init = "m" + type + "Reg";
+                var col11init = "m" + type + "Regdel";
 
-            var num = id.replace(Patt, '$2');
-            var prevParId = $("#" + id).attr("prev");
-            var selParId = $("#" + id + " option:selected").val();
+                var num = id.replace(Patt, '$2');
+                var prevParId = $("#" + id).attr("prev");
+                var selParId = $("#" + id + " option:selected").val();
 
-            if (prevParId === '-1' && selParId !== '-1') {
+                if (prevParId === '-1' && selParId !== '-1') {
 
-                if (type === 'In') {
-                    numInputs++
-                    var idRows = numInputs; // numInputs or numOutputs
-                } else if (type === 'Out') {
-                    numOutputs++
-                    var idRows = numOutputs; // numInputs or numOutputs
+                    if (type === 'In') {
+                        numInputs++
+                        var idRows = numInputs; // numInputs or numOutputs
+                    } else if (type === 'Out') {
+                        numOutputs++
+                        var idRows = numOutputs; // numInputs or numOutputs
+                    }
+                    $("#" + col1init).append('<select id="' + col1init + '-' + idRows + '" num="' + idRows + '" class="fbtn btn-default form-control mParChange" style ="margin-bottom: 5px;" prev ="-1"  name="' + col1init + '-' + idRows + '"></select>');
+                    $("#" + col2init).append('<input type="text" ppID="" placeholder="Enter name" class="form-control " style ="margin-bottom: 6px;" id="' + col2init + '-' + String(idRows - 1) + '" name="' + col2init + '-' + String(idRows - 1) + '">');
+                    $("#" + col3init).append('<button  type="button" class="btn btn-default form-control delRow" style ="margin-bottom: 6px;" id="' + col3init + '-' + String(idRows - 1) + '" name="' + col3init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Delete Row"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
+                    $("#" + col4init).append('<button  type="button" class="btn btn-default form-control addOpt" style ="margin-bottom: 6px;" id="' + col4init + '-' + String(idRows - 1) + '" name="' + col4init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Add/Remove operator"><span><i class="fa fa-wrench"></i></span></a></button>');
+                    $("#" + col5init).append('<select class="form-control" style ="visibility:hidden; margin-bottom: 6px;" id="' + col5init + '-' + String(idRows - 1) + '" name="' + col5init + '-' + String(idRows - 1) + '"></button>');
+                    $("#" + col6init).append('<input type="text" ppID="" placeholder="Operator content" class="form-control " style ="visibility:hidden; margin-bottom: 6px;" id="' + col6init + '-' + String(idRows - 1) + '" name="' + col6init + '-' + String(idRows - 1) + '">');
+                    $("#" + col7init).append('<button type="submit" class="btn btn-default form-control delOpt" style ="visibility:hidden; margin-bottom: 6px;" id="' + col7init + '-' + String(idRows - 1) + '" name="' + col7init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Remove operator"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
+                    $("#" + col8init).append('<button  type="button" class="btn btn-default form-control addOptional" style ="margin-bottom: 6px;" id="' + col8init + '-' + String(idRows - 1) + '" name="' + col8init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Check for Optional parameter"><span><i class="fa fa-square-o"></i></span></a></button>');
+                    $("#" + col9init).append('<button  type="button" class="btn btn-default form-control addRegEx" style ="margin-bottom: 6px;" id="' + col9init + '-' + String(idRows - 1) + '" name="' + col9init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Add/Remove Output RegEx"><span><i class="fa fa-code"></i></span></a></button>');
+                    $("#" + col10init).append('<input type="text" ppID="" placeholder="Enter RegEx" class="form-control " style ="visibility:hidden; margin-bottom: 6px;" id="' + col10init + '-' + String(idRows - 1) + '" name="' + col10init + '-' + String(idRows - 1) + '">');
+                    $("#" + col11init).append('<button type="submit" class="btn btn-default form-control delRegEx" style ="visibility:hidden; margin-bottom: 6px;" id="' + col11init + '-' + String(idRows - 1) + '" name="' + col11init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Remove Output RegEx"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
+                    //refresh tooltips
+                    $('[data-toggle="tooltip"]').tooltip();
+                    //load closure options
+                    var closureOpt = $('#mOutOpt-0 option').each(function () {
+                        var val = $(this).val()
+                        var optionClo = new Option(val, val);
+                        $('#' + col5init + '-' + String(idRows - 1)).append(optionClo);
+                    });
+                    $('#' + col5init + '-' + String(idRows - 1) + ' option:first').attr('disabled', "disabled");
+                    var opt = $('#mInputs > :first-child')[0].selectize.options;
+                    var newOpt = [];
+                    $.each(opt, function (element) {
+                        delete opt[element].$order;
+                        newOpt.push(opt[element]);
+                    });
+                    $("#" + id).attr("prev", selParId)
+                    $("#" + col1init + "-" + idRows).selectize({
+                        valueField: 'id',
+                        searchField: 'name',
+                        placeholder: "Add input...",
+                        options: newOpt,
+                        render: renderParam
+                    });
                 }
-                $("#" + col1init).append('<select id="' + col1init + '-' + idRows + '" num="' + idRows + '" class="fbtn btn-default form-control mParChange" style ="margin-bottom: 5px;" prev ="-1"  name="' + col1init + '-' + idRows + '"></select>');
-                $("#" + col2init).append('<input type="text" ppID="" placeholder="Enter name" class="form-control " style ="margin-bottom: 6px;" id="' + col2init + '-' + String(idRows - 1) + '" name="' + col2init + '-' + String(idRows - 1) + '">');
-                $("#" + col3init).append('<button  type="button" class="btn btn-default form-control delRow" style ="margin-bottom: 6px;" id="' + col3init + '-' + String(idRows - 1) + '" name="' + col3init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" title="" data-original-title="Delete Row"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
-                $("#" + col4init).append('<button  type="button" class="btn btn-default form-control addOpt" style ="margin-bottom: 6px;" id="' + col4init + '-' + String(idRows - 1) + '" name="' + col4init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Add/Remove operator"><span><i class="fa fa-wrench"></i></span></a></button>');
-                $("#" + col5init).append('<select class="form-control" style ="visibility:hidden; margin-bottom: 6px;" id="' + col5init + '-' + String(idRows - 1) + '" name="' + col5init + '-' + String(idRows - 1) + '"></button>');
-                $("#" + col6init).append('<input type="text" ppID="" placeholder="Operator content" class="form-control " style ="visibility:hidden; margin-bottom: 6px;" id="' + col6init + '-' + String(idRows - 1) + '" name="' + col6init + '-' + String(idRows - 1) + '">');
-                $("#" + col7init).append('<button type="submit" class="btn btn-default form-control delOpt" style ="visibility:hidden; margin-bottom: 6px;" id="' + col7init + '-' + String(idRows - 1) + '" name="' + col7init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Remove operator"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
-                $("#" + col8init).append('<button  type="button" class="btn btn-default form-control addOptional" style ="margin-bottom: 6px;" id="' + col8init + '-' + String(idRows - 1) + '" name="' + col8init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Check for Optional parameter"><span><i class="fa fa-square-o"></i></span></a></button>');
-                $("#" + col9init).append('<button  type="button" class="btn btn-default form-control addRegEx" style ="margin-bottom: 6px;" id="' + col9init + '-' + String(idRows - 1) + '" name="' + col9init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Add/Remove Output RegEx"><span><i class="fa fa-code"></i></span></a></button>');
-                $("#" + col10init).append('<input type="text" ppID="" placeholder="Enter RegEx" class="form-control " style ="visibility:hidden; margin-bottom: 6px;" id="' + col10init + '-' + String(idRows - 1) + '" name="' + col10init + '-' + String(idRows - 1) + '">');
-                $("#" + col11init).append('<button type="submit" class="btn btn-default form-control delRegEx" style ="visibility:hidden; margin-bottom: 6px;" id="' + col11init + '-' + String(idRows - 1) + '" name="' + col11init + '-' + String(idRows - 1) + '"><a data-toggle="tooltip" data-placement="bottom" data-original-title="Remove Output RegEx"><span><i class="glyphicon glyphicon-remove"></i></span></a></button>');
-                //refresh tooltips
-                $('[data-toggle="tooltip"]').tooltip();
-                //load closure options
-                var closureOpt = $('#mOutOpt-0 option').each(function () {
-                    var val = $(this).val()
-                    var optionClo = new Option(val, val);
-                    $('#' + col5init + '-' + String(idRows - 1)).append(optionClo);
-                });
-                $('#' + col5init + '-' + String(idRows - 1) + ' option:first').attr('disabled', "disabled");
-                var opt = $('#mInputs > :first-child')[0].selectize.options;
-                var newOpt = [];
-                $.each(opt, function (element) {
-                    delete opt[element].$order;
-                    newOpt.push(opt[element]);
-                });
-                $("#" + id).attr("prev", selParId)
-                $("#" + col1init + "-" + idRows).selectize({
-                    valueField: 'id',
-                    searchField: 'name',
-                    placeholder: "Add input...",
-                    options: newOpt,
-                    render: renderParam
-                });
             }
         })
 
@@ -2952,6 +3403,8 @@ $(document).ready(function () {
     function fillRenameModal(renameTextDefVal, checkID, inputID) {
         if (renameTextDefVal != null) {
             if (renameTextDefVal !== "") {
+                renameTextDefVal= renameTextDefVal.replace(/'/gi, "");
+                renameTextDefVal = renameTextDefVal.replace(/"/gi, "");
                 if ($(inputID).data().multiselect) {
                     $(inputID).multiselect('enable')
                     var optAr = []
@@ -3108,6 +3561,7 @@ $(document).ready(function () {
         }
     });
 
+
     //process group modal save button
     $('#processGroupModal').on('click', '#saveProcessGroup', function (event) {
         event.preventDefault();
@@ -3121,8 +3575,6 @@ $(document).ready(function () {
         }
         var selProGroupName = data[1].value;
         data.push({ name: "p", value: "saveProcessGroup" });
-
-
         if ((savetype === "edit" && selProGroupID !== '' && selProGroupName !== '') || (savetype === "add" && selProGroupName !== '')) {
             $.ajax({
                 type: "POST",
@@ -3130,29 +3582,17 @@ $(document).ready(function () {
                 data: data,
                 async: false,
                 success: function (s) {
-                    if (savetype === 'edit') { //Edit Process Group
-                        var allProBox = $('#proGroup').find('select');
-                        var proGroBoxId = allProBox[0].getAttribute('id');
-                        $('#' + proGroBoxId)[0].selectize.updateOption(selProGroupID, {
-                            value: selProGroupID,
-                            text: selProGroupName
-                        });
-                        modifyProcessParentSideBar(selProGroupName, selProGroupID, "update")
-                    } else { //Add process group
-                        var allProBox = $('#proGroup').find('select');
-                        var proGroBoxId = allProBox[0].getAttribute('id');
+                    if (s.id){
                         selProGroupID = s.id;
-                        $('#' + proGroBoxId)[0].selectize.addOption({
-                            value: selProGroupID,
-                            text: selProGroupName
-                        });
-                        var checkGroupExist = $("span.processParent[origin='" + selProGroupName + "']")
-                        if (checkGroupExist.length === 0) {
-                            modifyProcessParentSideBar(selProGroupName, selProGroupID, "insert")
-                        }
                     }
+                    $('#mProcessGroup').selectize()[0].selectize.destroy();
+                    loadModalProGro()
+                    modifyProcessParentSideBar(selProGroupName, selProGroupID);
                     $('#mProcessGroup')[0].selectize.setValue(selProGroupID, false);
                     $('#processGroupModal').modal('hide');
+                    if (s.message){
+                        showInfoModal("#infoMod", "#infoModText", s.message)
+                    }
 
                 },
                 error: function (errorThrown) {
@@ -3453,6 +3893,7 @@ $(document).ready(function () {
             savetype = "edit";
         }
         var selPipeGroupName = data[1].value;
+        var pipeGroupID = "";
         data.push({ name: "p", value: "savePipelineGroup" });
         if ((savetype === "edit" && selPipeGroupID !== '' && selPipeGroupName !== '') || (savetype === "add" && selPipeGroupName !== '')) {
             $.ajax({
@@ -3461,31 +3902,18 @@ $(document).ready(function () {
                 data: data,
                 async: false,
                 success: function (s) {
-                    if (savetype === 'edit') { //Edit Group
-                        $('#pipeGroupAll')[0].selectize.updateOption(selPipeGroupID, {
-                            value: selPipeGroupID,
-                            text: selPipeGroupName
-                        });
-                        //sidebar menu update
-                        modifyPipelineParentSideBar(selPipeGroupName, selPipeGroupID, "update")
-                    } else { //Add group
-                        var pipeGroupID = s.id;
-                        $("#pipeGroupAll").val(pipeGroupID);
-                        $('#pipeGroupAll')[0].selectize.addOption({
-                            value: pipeGroupID,
-                            text: selPipeGroupName
-                        });
-                        //sidebar menu add
-                        //check if item exist:
-                        var checkSideBar = $("span.pipelineParent[origin='" + selPipeGroupName + "']")
-                        if (checkSideBar.length === 0) {
-                            modifyPipelineParentSideBar(selPipeGroupName, pipeGroupID, "insert")
-                        }
-                        $('#pipeGroupAll')[0].selectize.setValue(pipeGroupID, false);
-
+                    if (s.id){
+                        selPipeGroupID = s.id;
                     }
+                    //refresh dropdown incase item not loaded.
+                    $('#pipeGroupAll').selectize()[0].selectize.destroy();
+                    loadPipeMenuGroup(true)
+                    modifyPipelineParentSideBar(selPipeGroupName, selPipeGroupID)
+                    $('#pipeGroupAll')[0].selectize.setValue(selPipeGroupID, false);
                     $('#pipeGroupModal').modal('hide');
-
+                    if (s.message){
+                        showInfoModal("#infoMod", "#infoModText", s.message)
+                    }
                 },
                 error: function (errorThrown) {
                     alert("Error: " + errorThrown);
@@ -3555,13 +3983,7 @@ $(document).ready(function () {
         }
     });
 
-    //  ---- Pipiline Group Modals ends ---
-
-
-
-
-
-
+    //  ---- Pipeline Group Modals ends ---
 
 
 });
